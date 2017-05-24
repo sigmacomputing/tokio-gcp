@@ -91,6 +91,7 @@ impl AuthAdapter {
     }
 }
 
+#[inline(never)] // for stack traces
 pub fn default_credentials() -> GoogleCloudAuth {
     let adapter = if let Some(adapter) = credentials_from_env() {
         debug!("Using Google Cloud credentials from [env]");
@@ -113,6 +114,7 @@ pub fn default_credentials() -> GoogleCloudAuth {
     }
 }
 
+#[inline(never)] // for stack traces
 fn credentials_from_env() -> Option<AuthAdapter> {
     #[derive(Deserialize)]
     #[allow(dead_code)]
@@ -132,6 +134,8 @@ fn credentials_from_env() -> Option<AuthAdapter> {
     };
 
     if let Ok(path) = env::var("GOOGLE_APPLICATION_CREDENTIALS") {
+        debug!("GOOGLE_APPLICATION_CREDENTIALS={}", path);
+
         let file = fs::File::open(path).unwrap();
         let raw = serde_json::from_reader::<_, RawKey>(file).unwrap();
 
@@ -151,9 +155,12 @@ fn credentials_from_env() -> Option<AuthAdapter> {
 }
 
 // see https://developers.google.com/identity/protocols/OAuth2WebServer#offline
+#[inline(never)] // for stack traces
 fn credentials_from_app_default() -> Option<AuthAdapter> {
     let homedir = env::home_dir().unwrap_or("./".into());
     let path = path::Path::new(&homedir).join(APP_DEFAULT_PATH);
+    debug!("application-default-credentials={:?}", path);
+
     if path.exists() {
         let file = fs::File::open(path).unwrap();
         let app_default_auth = serde_json::from_reader::<_, ApplicationDefaultAuth>(file).unwrap();
