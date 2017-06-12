@@ -104,7 +104,7 @@ impl<'a> Hub<'a> {
         };
 
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        let res = self.post::<_, CryptoKey>(&uri, req)?;
+        let res = self.post::<_, CryptoKey>(&uri, req, &[])?;
         Ok(res.name.expect("name to be set"))
     }
 
@@ -121,7 +121,7 @@ impl<'a> Hub<'a> {
         };
 
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        let res = self.post::<_, EncryptResponse>(&uri, req)?;
+        let res = self.post::<_, EncryptResponse>(&uri, req, &[])?;
 
         let ciphertext = res.ciphertext.expect("ciphertext to be set");
         Ok(base64::decode(&ciphertext.as_bytes()).expect("ciphertext to be base64"))
@@ -140,7 +140,7 @@ impl<'a> Hub<'a> {
         };
 
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        let res = self.post::<_, DecryptResponse>(&uri, req)?;
+        let res = self.post::<_, DecryptResponse>(&uri, req, &[])?;
 
         let plaintext = res.plaintext.expect("plaintext to be set");
         Ok(base64::decode(&plaintext.as_bytes()).expect("plaintext to be base64"))

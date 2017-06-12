@@ -45,6 +45,8 @@ impl Token {
 
 #[derive(Clone, Debug)]
 pub struct GoogleCloudAuth {
+    // XXX(don) we only cache a token for the last set of scopes requested.
+    scopes: Arc<RwLock<Vec<String>>>,
     token: Arc<RwLock<Token>>,
     adapter: AuthAdapter,
 }
@@ -53,16 +55,24 @@ impl GoogleCloudAuth {
     pub fn token<C: ApiClient>(&self, client: &C, scopes: &[String]) -> client::Result<Token> {
         {
             let cached = self.token.read().expect("lock to not be poisoned");
-            if !cached.is_expired() {
-                trace!("reusing cached service account oauth token");
+            let scopes_for_cached = self.scopes
+                .read()
+                .expect("scopes lock to not be poisoned");
+            if !cached.is_expired() && scopes_for_cached.as_slice() == scopes {
+                trace!("reusing cached service account oauth token (cached = {:?}, requested = {:?})",
+                       scopes_for_cached.as_slice(),
+                       scopes);
                 return Ok((*cached).clone());
             }
         }
 
         let mut cached = self.token.write().expect("lock to not be poisoned");
+        let mut cached_scope = self.scopes
+            .write()
+            .expect("scopes lock to not be poisoned");
 
         // check is we were blocked on another writer
-        if !cached.is_expired() {
+        if !cached.is_expired() && cached_scope.as_slice() == scopes {
             return Ok(cached.clone());
         }
 
@@ -72,6 +82,7 @@ impl GoogleCloudAuth {
         up_to_date.expires_at = Some(UTC::now() + expires_in);
 
         *cached = up_to_date.clone();
+        *cached_scope = Vec::from(scopes);
         Ok(up_to_date)
     }
 }
@@ -110,6 +121,7 @@ pub fn default_credentials() -> GoogleCloudAuth {
 
     GoogleCloudAuth {
         adapter: adapter,
+        scopes: Arc::default(),
         token: Arc::default(),
     }
 }
