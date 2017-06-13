@@ -10,5 +10,5 @@ fn main() {
     let client = gcp::GoogleCloudClient::new("").unwrap();
 
     let tokeninfo_hub = client.hub() as TokenInfoHub;
-    println!("{:?}", tokeninfo_hub.tokeninfo());
+    println!("{:?}", tokeninfo_hub.tokeninfo(&[]));
 }
