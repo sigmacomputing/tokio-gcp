@@ -28,12 +28,12 @@ pub struct TokenInfo {
 }
 
 impl<'a> Hub<'a> {
-    pub fn tokeninfo(&self) -> client::Result<TokenInfo> {
-        let token = self.token()?;
+    pub fn tokeninfo(&self, scopes: &[String]) -> client::Result<TokenInfo> {
+        let token = self.token(scopes)?;
 
         let mut uri = String::from(TOKEN_INFO_URI);
         uri.push_str(&format!("?access_token={}", token.access_token));
 
-        self.get(&Uri::from_str(&uri).unwrap())
+        self.get(&Uri::from_str(&uri).unwrap(), scopes)
     }
 }

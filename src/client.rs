@@ -47,6 +47,7 @@ impl fmt::Display for Error {
 
 #[derive(Deserialize, Debug)]
 pub struct ApiError {
+    #[serde(default)]
     pub error: Option<ErrorDetails>,
     pub error_description: Option<String>,
 }
@@ -115,8 +116,8 @@ impl<'a, S> Hub<'a, S> {
 }
 
 impl<'a, S> ApiClient for Hub<'a, S> {
-    fn token(&self) -> Result<auth::Token> {
-        self.client.auth.token(self, &[])
+    fn token(&self, scopes: &[String]) -> Result<auth::Token> {
+        self.client.auth.token(self, scopes)
     }
 
     fn request<D: 'static + Send>(&self, r: hyper::Request<hyper::Body>) -> Result<D>
@@ -171,25 +172,25 @@ pub trait ApiClient {
         where for<'de> D: 'static + Send + Deserialize<'de>;
 
     // fetches an access token for use in requests
-    fn token(&self) -> Result<auth::Token>;
+    fn token(&self, scopes: &[String]) -> Result<auth::Token>;
 
     // helper method for making a GET request
-    fn get<D>(&self, uri: &hyper::Uri) -> Result<D>
+    fn get<D>(&self, uri: &hyper::Uri, scopes: &[String]) -> Result<D>
         where for<'de> D: 'static + Send + Deserialize<'de>
     {
         let mut req = hyper::Request::new(hyper::Method::Get, uri.clone());
-        req.headers_mut().set(self.token()?.into_header());
+        req.headers_mut().set(self.token(scopes)?.into_header());
 
         self.request(req)
     }
 
     // helper method for making a POST request with a JSON body
-    fn post<B: Serialize, D>(&self, uri: &hyper::Uri, body: B) -> Result<D>
+    fn post<B: Serialize, D>(&self, uri: &hyper::Uri, body: B, scopes: &[String]) -> Result<D>
         where for<'de> D: 'static + Send + Deserialize<'de>
     {
         let mut req = hyper::Request::new(hyper::Method::Post, uri.clone());
         req.headers_mut().set(hyper::header::ContentType::json());
-        req.headers_mut().set(self.token()?.into_header());
+        req.headers_mut().set(self.token(scopes)?.into_header());
 
         let body = serde_json::to_string(&body).unwrap();
         req.set_body(body);

@@ -45,25 +45,32 @@ impl Token {
 
 #[derive(Clone, Debug)]
 pub struct GoogleCloudAuth {
-    token: Arc<RwLock<Token>>,
+    // XXX(don) we only cache a token for the last set of scopes requested.
+    token_scopes: Arc<RwLock<(Token, Vec<String>)>>,
     adapter: AuthAdapter,
 }
 
 impl GoogleCloudAuth {
     pub fn token<C: ApiClient>(&self, client: &C, scopes: &[String]) -> client::Result<Token> {
         {
-            let cached = self.token.read().expect("lock to not be poisoned");
-            if !cached.is_expired() {
-                trace!("reusing cached service account oauth token");
-                return Ok((*cached).clone());
+            let (ref cached_token, ref cached_scopes) = *self.token_scopes
+                                                             .read()
+                                                             .expect("lock to not be poisoned");
+            if !cached_token.is_expired() && cached_scopes.as_slice() == scopes {
+                trace!("reusing cached service account oauth token (cached = {:?}, requested = {:?})",
+                       cached_scopes.as_slice(),
+                       scopes);
+                return Ok((*cached_token).clone());
             }
         }
 
-        let mut cached = self.token.write().expect("lock to not be poisoned");
+        let (ref mut cached_token, ref mut cached_scopes) = *self.token_scopes
+                                                                 .write()
+                                                                 .expect("lock to not be poisoned");
 
         // check is we were blocked on another writer
-        if !cached.is_expired() {
-            return Ok(cached.clone());
+        if !cached_token.is_expired() && cached_scopes.as_slice() == scopes {
+            return Ok(cached_token.clone());
         }
 
         // refresh the token and shrink the expiration window by 60s
@@ -71,7 +78,8 @@ impl GoogleCloudAuth {
         let expires_in = chrono::Duration::seconds(up_to_date.expires_in - 60);
         up_to_date.expires_at = Some(UTC::now() + expires_in);
 
-        *cached = up_to_date.clone();
+        *cached_token = up_to_date.clone();
+        *cached_scopes = Vec::from(scopes);
         Ok(up_to_date)
     }
 }
@@ -110,7 +118,7 @@ pub fn default_credentials() -> GoogleCloudAuth {
 
     GoogleCloudAuth {
         adapter: adapter,
-        token: Arc::default(),
+        token_scopes: Arc::default(),
     }
 }
 

@@ -286,7 +286,7 @@ impl<'a> Hub<'a> {
         };
 
         let uri = self.mk_uri("lookup");
-        let res = self.post::<_, LookupResponse>(&uri, req)?;
+        let res = self.post::<_, LookupResponse>(&uri, req, &[])?;
 
         self.commit(&txn_id, CommitRequest::default())?;
 
@@ -331,14 +331,14 @@ impl<'a> Hub<'a> {
     fn begin_transaction(&self) -> client::Result<String> {
         let uri = self.mk_uri("beginTransaction");
         let req = BeginTransactionRequest::default();
-        self.post::<_, BeginTransactionResponse>(&uri, req)
+        self.post::<_, BeginTransactionResponse>(&uri, req, &[])
             .map(|r| r.transaction)
     }
 
     fn commit(&self, txn_id: &str, mut req: CommitRequest) -> client::Result<CommitResponse> {
         req.transaction = txn_id.to_string();
         let uri = self.mk_uri("commit");
-        self.post(&uri, req)
+        self.post(&uri, req, &[])
     }
 
     fn mk_uri(&self, action: &str) -> Uri {
