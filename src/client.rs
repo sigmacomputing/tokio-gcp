@@ -144,18 +144,13 @@ impl<'a, S> ApiClient for Hub<'a, S> {
                                         acc.extend_from_slice(&*chunk);
                                         acc
                                     });
-                                // println!("body: {}", String::from_utf8(body.clone()).expect("gah"));
 
-                                trace!("is_success = {:?}", status.is_success());
                                 let res = if status.is_success() {
                                     serde_json::from_slice(&body).map_err(|e| Error::JsonError(e))
                                 } else {
                                     match serde_json::from_slice::<ApiError>(&body) {
                                         Ok(e) => Err(Error::ApiError(e)),
-                                        Err(e) => {
-                                            trace!("json error");
-                                            Err(Error::JsonError(e))
-                                        }
+                                        Err(e) => Err(Error::JsonError(e)),
                                     }
                                 };
 
