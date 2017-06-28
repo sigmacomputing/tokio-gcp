@@ -14,7 +14,7 @@ use tokio_core::reactor;
 use auth;
 
 // (max) NOTE please don't use this directly - prefer 'access_hyper_client'
-type HyperClient = hyper::Client<hyper_tls::HttpsConnector>;
+type HyperClient = hyper::Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>;
 lazy_static!(static ref HYPER_CLIENT: AtomicPtr<HyperClient> = Default::default(););
 
 // (max) NOTE since Handle is only available on the reactor thread, we can
@@ -75,11 +75,15 @@ impl GoogleCloudClient {
             .spawn(move || {
                 let mut core = reactor::Core::new().unwrap();
 
+                let https = hyper_tls::HttpsConnector::new(DNS_WORKER_THREADS, &core.handle())
+                    .unwrap();
+
                 let mut client = hyper::Client::configure()
-                    .connector(hyper_tls::HttpsConnector::new(DNS_WORKER_THREADS, &core.handle()))
+                    .connector(https)
                     .keep_alive_timeout(Some(time::Duration::from_secs(KEEP_ALIVE_TIMEOUT)))
                     .keep_alive(true)
                     .build(&core.handle());
+
                 HYPER_CLIENT.store(&mut client, Ordering::SeqCst);
 
                 let remote = core.remote();
