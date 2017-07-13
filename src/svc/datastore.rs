@@ -328,6 +328,25 @@ impl<'a> Hub<'a> {
         Ok(())
     }
 
+    pub fn delete_by_id(&self, kind: &str, ns: &str, id: &str) -> client::Result<()> {
+        let key = self.mk_key(kind, Some(ns), None, Some(id));
+
+        let delete = Mutation {
+            delete: Some(key),
+            ..Default::default()
+        };
+
+        let req = CommitRequest {
+            mutations: Some(vec![delete]),
+            ..Default::default()
+        };
+
+        let txn_id = self.begin_transaction()?;
+        self.commit(&txn_id, req)?;
+
+        Ok(())
+    }
+
     fn begin_transaction(&self) -> client::Result<String> {
         let uri = self.mk_uri("beginTransaction");
         let req = BeginTransactionRequest::default();
