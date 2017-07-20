@@ -170,6 +170,23 @@ impl<'a, S> ApiClient for Hub<'a, S> {
     }
 }
 
+pub fn encode_query_params<'a, I>(i: I) -> String
+    where I: IntoIterator<Item = (&'a str, String)>
+{
+    use url::percent_encoding::{utf8_percent_encode, QUERY_ENCODE_SET};
+
+    let mut query = String::new();
+    for (i, (k, v)) in i.into_iter().enumerate() {
+        if i != 0 {
+            query.push('&');
+        }
+        query.extend(utf8_percent_encode(k, QUERY_ENCODE_SET));
+        query.push('=');
+        query.extend(utf8_percent_encode(&v, QUERY_ENCODE_SET));
+    }
+    query
+}
+
 pub trait ApiClient {
     // submits a raw request using hyper
     fn request<D>(&self, hyper::Request<hyper::Body>) -> Result<D>
