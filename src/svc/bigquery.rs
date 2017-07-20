@@ -14,19 +14,11 @@ static QUERY_RESOURCE_KIND: &str = "bigquery#queryResults";
 pub struct BigQueryService {}
 pub type Hub<'a> = client::Hub<'a, BigQueryService>;
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Default, Debug)]
 pub struct ListDatasetsRequest {
     pub all: bool,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub filter: Option<String>,
-
-    #[serde(rename="maxResults")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_results: Option<usize>,
-
-    #[serde(rename="pageToken")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub page_token: Option<String>,
 }
 
@@ -74,14 +66,9 @@ pub struct DatasetReference {
     pub dataset_id: String,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Default, Debug)]
 pub struct ListTablesRequest {
-    #[serde(rename="maxResults")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_results: Option<usize>,
-
-    #[serde(rename="pageToken")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub page_token: Option<String>,
 }
 
@@ -168,27 +155,23 @@ pub struct TableField {
 }
 
 #[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SubmitQueryRequest {
     pub kind: String,
     pub query: String,
 
-    #[serde(rename="timeoutMs")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<usize>,
 
-    #[serde(rename="useLegacySql")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_legacy_sql: Option<bool>,
 
-    #[serde(rename="useQueryCache")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_query_cache: Option<bool>,
 
-    #[serde(rename="dryRun")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dry_run: Option<bool>,
 
-    #[serde(rename="maxResults")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_results: Option<usize>,
 }
@@ -449,7 +432,4 @@ impl<'a> Hub<'a> {
 
         self.request(req)
     }
-
-    /*
-     */
 }
