@@ -54,9 +54,9 @@ pub struct ApiError {
 
 #[derive(Deserialize, Debug)]
 pub struct ErrorDetails {
-    code: Option<usize>,
+    pub code: Option<usize>,
     pub message: Option<String>,
-    status: Option<String>,
+    pub status: Option<String>,
 }
 
 #[derive(Clone)]
