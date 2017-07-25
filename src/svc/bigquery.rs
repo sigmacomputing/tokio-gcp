@@ -401,6 +401,7 @@ impl<'a> Hub<'a> {
         req.headers_mut().set(auth);
 
         self.request::<CancelQueryResponse>(req)
+            .map(|(_, res)| res)
     }
 
     // helper method for making a GET request
@@ -410,7 +411,8 @@ impl<'a> Hub<'a> {
         let mut req = hyper::Request::new(hyper::Method::Get, uri.clone());
         let auth = hyper::header::Authorization(hyper::header::Bearer { token });
         req.headers_mut().set(auth);
-        self.request(req)
+
+        self.request(req).map(|(_, res)| res)
     }
 
     // helper method for making a POST request with a JSON body
@@ -430,6 +432,6 @@ impl<'a> Hub<'a> {
         let body = serde_json::to_string(&body).unwrap();
         req.set_body(body);
 
-        self.request(req)
+        self.request(req).map(|(_, res)| res)
     }
 }
