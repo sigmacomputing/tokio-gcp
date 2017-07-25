@@ -1,4 +1,5 @@
 use std::{env, fs, path};
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 
@@ -12,6 +13,8 @@ use openssl::rsa::Rsa;
 use serde_json;
 use url::form_urlencoded;
 
+mod gcert;
+
 static APP_DEFAULT_PATH: &'static str = ".config/gcloud/application_default_credentials.json";
 static APP_DEFAULT_GRANT_TYPE: &'static str = "refresh_token";
 static APP_DEFAULT_URI: &'static str = "https://www.googleapis.com/oauth2/v4/token";
@@ -21,6 +24,9 @@ static OAUTH_JWT_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:jwt-bearer
 static OAUTH_JWT_DEFAULT_SCOPE: &str = "https://www.googleapis.com/auth/cloud-platform";
 
 pub type Authorization = hyper::header::Authorization<hyper::header::Bearer>;
+
+pub use self::gcert::PubKey;
+use self::gcert::KeyRingType;
 
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Token {
@@ -47,10 +53,52 @@ impl Token {
 pub struct GoogleCloudAuth {
     // XXX(don) we only cache a token for the last set of scopes requested.
     token_scopes: Arc<RwLock<(Token, Vec<String>)>>,
+    keyrings: Arc<RwLock<HashMap<KeyRingType, gcert::KeyRing>>>,
     adapter: AuthAdapter,
 }
 
 impl GoogleCloudAuth {
+    pub fn get_firebase_pkey<C: ApiClient>(&self,
+                                           client: &C,
+                                           kid: &str)
+                                           -> client::Result<gcert::PubKey> {
+        self.get_pkey(client, kid, KeyRingType::Firebase)
+    }
+
+    pub fn get_google_auth_pkey<C: ApiClient>(&self,
+                                              client: &C,
+                                              kid: &str)
+                                              -> client::Result<gcert::PubKey> {
+        self.get_pkey(client, kid, KeyRingType::GoogleAuth)
+    }
+
+    fn get_pkey<C: ApiClient>(&self,
+                              client: &C,
+                              kid: &str,
+                              ty: KeyRingType)
+                              -> client::Result<gcert::PubKey> {
+        {
+            let ref keyrings = *self.keyrings.read().expect("lock to not be poisoned");
+            if let Some(keyring) = keyrings.get(&ty) {
+                if let Some(pkey) = keyring.get(kid).ok() {
+                    if !keyring.is_expired() {
+                        return Ok(pkey);
+                    }
+                }
+            }
+        }
+
+        // check if we were blocked on another writer
+        let ref mut keyrings = *self.keyrings.write().expect("lock to not be poisoned");
+        if let Some(keyring) = keyrings.get(&ty) {
+            return keyring.get(kid);
+        }
+
+        let keyring = gcert::fetch(client, ty)?;
+        keyrings.insert(ty, keyring);
+        keyrings[&ty].get(kid)
+    }
+
     pub fn token<C: ApiClient>(&self, client: &C, scopes: &[String]) -> client::Result<Token> {
         {
             let (ref cached_token, ref cached_scopes) = *self.token_scopes
@@ -119,6 +167,7 @@ pub fn default_credentials() -> GoogleCloudAuth {
     GoogleCloudAuth {
         adapter: adapter,
         token_scopes: Arc::default(),
+        keyrings: Arc::default(),
     }
 }
 
@@ -202,7 +251,7 @@ impl ApplicationDefaultAuth {
             .headers_mut()
             .set(ContentType::form_url_encoded());
 
-        client.request(request)
+        client.request(request).map(|(_, res)| res)
     }
 }
 
@@ -265,6 +314,6 @@ impl ServiceAccountAuth {
             .headers_mut()
             .set(ContentType::form_url_encoded());
 
-        client.request(request)
+        client.request(request).map(|(_, res)| res)
     }
 }

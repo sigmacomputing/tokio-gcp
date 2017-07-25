@@ -7,6 +7,7 @@ use hyper;
 use hyper_tls;
 use futures::{future, Future, Stream};
 use futures::sync::oneshot;
+use openssl;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use tokio_core::reactor;
@@ -31,8 +32,10 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     ApiError(ApiError),
+    OpenSslError(openssl::error::ErrorStack),
     HyperError(hyper::Error),
     JsonError(serde_json::Error),
+    Unauthorized, // a generic "unauthorized" error
 }
 
 impl fmt::Display for Error {
@@ -41,6 +44,8 @@ impl fmt::Display for Error {
             Error::ApiError(ref e) => write!(f, "ApiError {:?}", e),
             Error::HyperError(ref e) => write!(f, "HyperError {:?}", e),
             Error::JsonError(ref e) => write!(f, "JsonError {:?}", e),
+            Error::OpenSslError(ref e) => write!(f, "OpenSslError {:?}", e),
+            Error::Unauthorized => write!(f, "Unauthorized"),
         }
     }
 }
@@ -119,16 +124,28 @@ impl<'a, S> Hub<'a, S> {
     }
 }
 
+impl<'a> Hub<'a, ::svc::tokeninfo::TokenInfoService> {
+    pub fn get_firebase_pkey(&self, kid: &str) -> Result<auth::PubKey> {
+        self.client.auth.get_firebase_pkey(self, kid)
+    }
+    pub fn get_google_auth_pkey(&self, kid: &str) -> Result<auth::PubKey> {
+        self.client.auth.get_google_auth_pkey(self, kid)
+    }
+}
+
 impl<'a, S> ApiClient for Hub<'a, S> {
     fn token(&self, scopes: &[String]) -> Result<auth::Token> {
         self.client.auth.token(self, scopes)
     }
 
-    fn request<D: 'static + Send>(&self, r: hyper::Request<hyper::Body>) -> Result<D>
+    fn request<D: 'static + Send>(&self,
+                                  r: hyper::Request<hyper::Body>)
+                                  -> Result<(hyper::Headers, D)>
         where for<'de> D: 'static + Send + Deserialize<'de>
     {
         trace!("send request: {:?}", r);
         let (tx, rx) = oneshot::channel();
+
         self.client
             .remote
             .spawn(|handle| {
@@ -136,6 +153,7 @@ impl<'a, S> ApiClient for Hub<'a, S> {
                 work.and_then(|res| {
                         trace!("recv response: {:?}", res);
                         let status = res.status();
+                        let headers = res.headers().clone();
 
                         res.body()
                             .collect()
@@ -159,9 +177,9 @@ impl<'a, S> ApiClient for Hub<'a, S> {
                                 };
 
                                 let as_str = unsafe { ::std::str::from_utf8_unchecked(&body) };
-                                trace!("rslv oneshot: {}", as_str);
+                                trace!("recv oneshot: {}", as_str);
 
-                                tx.send(res).unwrap_or(())
+                                tx.send(res.map(|res| (headers, res))).unwrap_or(())
                             })
                     })
                     .map_err(|_| ())
@@ -189,7 +207,7 @@ pub fn encode_query_params<'a, I>(i: I) -> String
 
 pub trait ApiClient {
     // submits a raw request using hyper
-    fn request<D>(&self, hyper::Request<hyper::Body>) -> Result<D>
+    fn request<D>(&self, hyper::Request<hyper::Body>) -> Result<(hyper::Headers, D)>
         where for<'de> D: 'static + Send + Deserialize<'de>;
 
     // fetches an access token for use in requests
@@ -202,7 +220,7 @@ pub trait ApiClient {
         let mut req = hyper::Request::new(hyper::Method::Get, uri.clone());
         req.headers_mut().set(self.token(scopes)?.into_header());
 
-        self.request(req)
+        self.request(req).map(|(_, res)| res)
     }
 
     // helper method for making a POST request with a JSON body
@@ -216,6 +234,6 @@ pub trait ApiClient {
         let body = serde_json::to_string(&body).unwrap();
         req.set_body(body);
 
-        self.request(req)
+        self.request(req).map(|(_, res)| res)
     }
 }
