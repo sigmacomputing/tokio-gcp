@@ -111,12 +111,6 @@ impl GoogleCloudClient {
             _service: PhantomData,
         }
     }
-    pub fn get_firebase_pkey(&self, kid: &str) -> Result<auth::PubKey> {
-        self.auth.get_firebase_pkey(&self.hub::<()>(), kid)
-    }
-    pub fn get_google_auth_pkey(&self, kid: &str) -> Result<auth::PubKey> {
-        self.auth.get_google_auth_pkey(&self.hub::<()>(), kid)
-    }
 }
 
 pub struct Hub<'a, S> {
@@ -127,6 +121,15 @@ pub struct Hub<'a, S> {
 impl<'a, S> Hub<'a, S> {
     pub fn project_id(&self) -> &str {
         &self.client.project_id
+    }
+}
+
+impl<'a> Hub<'a, ::svc::tokeninfo::TokenInfoService> {
+    pub fn get_firebase_pkey(&self, kid: &str) -> Result<auth::PubKey> {
+        self.client.auth.get_firebase_pkey(self, kid)
+    }
+    pub fn get_google_auth_pkey(&self, kid: &str) -> Result<auth::PubKey> {
+        self.client.auth.get_google_auth_pkey(self, kid)
     }
 }
 
