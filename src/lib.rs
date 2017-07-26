@@ -22,3 +22,4 @@ pub mod svc;
 
 pub use client::{GoogleCloudClient, Hub};
 pub use client::{Error, ApiError, ErrorDetails, Result};
+pub use auth::Token as BearerToken;
