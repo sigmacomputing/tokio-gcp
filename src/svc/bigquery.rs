@@ -108,6 +108,14 @@ pub struct TableMeta {
 
     #[serde(rename="type")]
     pub type0: String,
+
+    pub view: Option<ViewProperties>,
+}
+
+#[derive(Deserialize, Default, Debug)]
+pub struct ViewProperties {
+    #[serde(rename="useLegacySql")]
+    pub use_legacy_sql: bool,
 }
 
 #[derive(Deserialize, Default, Debug)]
