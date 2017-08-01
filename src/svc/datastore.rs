@@ -272,23 +272,16 @@ impl<'a> Hub<'a> {
         self.lookup_one(key)
     }
 
+    // Lookup a key using default read options:
+    // https://cloud.google.com/datastore/docs/reference/rest/v1/ReadOptions
     fn lookup_one(&self, key: Key) -> client::Result<Option<ValueMap>> {
-        let txn_id = self.begin_transaction()?;
-
-        let read_options = ReadOptions {
-            transaction: Some(txn_id.clone()),
-            ..Default::default()
-        };
-
         let req = LookupRequest {
             keys: Some(vec![key]),
-            read_options: Some(read_options),
+            read_options: None,
         };
 
         let uri = self.mk_uri("lookup");
         let res = self.post::<_, LookupResponse>(&uri, req, &[])?;
-
-        self.commit(&txn_id, CommitRequest::default())?;
 
         Ok(res.found
                .and_then(|mut f| if f.len() != 1 {
