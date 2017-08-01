@@ -10,7 +10,7 @@ env_logger = "0.3"
 hyper = "0.11"
 hyper-tls = "0.1"
 futures = "0.1"
-jsonwebtoken = "2.0"
+jsonwebtoken = { git = "https://github.com/mhseiden/jsonwebtoken.git", rev = "05041bb" }
 lazy_static = "0.2"
 log = "0.3"
 openssl = "0.9"

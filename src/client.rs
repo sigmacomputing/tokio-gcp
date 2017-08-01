@@ -131,13 +131,18 @@ impl<'a> Hub<'a, ::svc::tokeninfo::TokenInfoService> {
     pub fn get_google_auth_pkey(&self, kid: &str) -> Result<auth::PubKey> {
         self.client.auth.get_google_auth_pkey(self, kid)
     }
+    // NOTE this flow is described in the following google documentation
+    //
+    // https://developers.google.com/identity/protocols/OAuth2ServiceAccount#authorizingrequests
+    pub fn delegate(&self, id_token: &str, scopes: &[String]) -> Result<auth::Token> {
+        self.client.auth.delegate(self, id_token, scopes)
+    }
 }
 
 impl<'a, S> ApiClient for Hub<'a, S> {
     fn token(&self, scopes: &[String]) -> Result<auth::Token> {
         self.client.auth.token(self, scopes)
     }
-
     fn request<D: 'static + Send>(&self,
                                   r: hyper::Request<hyper::Body>)
                                   -> Result<(hyper::Headers, D)>
@@ -211,7 +216,7 @@ pub trait ApiClient {
         where for<'de> D: 'static + Send + Deserialize<'de>;
 
     // fetches an access token for use in requests
-    fn token(&self, scopes: &[String]) -> Result<auth::Token>;
+    fn token(&self, &[String]) -> Result<auth::Token>;
 
     // helper method for making a GET request
     fn get<D>(&self, uri: &hyper::Uri, scopes: &[String]) -> Result<D>

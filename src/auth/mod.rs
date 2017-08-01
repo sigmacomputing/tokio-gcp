@@ -31,8 +31,8 @@ use self::gcert::KeyRingType;
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Token {
     pub access_token: String,
-    token_type: String,
-    expires_in: i64,
+    pub token_type: String,
+    pub expires_in: i64,
 
     // set manually after deserialization
     #[serde(skip_deserializing)]
@@ -99,6 +99,45 @@ impl GoogleCloudAuth {
         keyrings[&ty].get(kid)
     }
 
+    pub fn delegate<C: ApiClient>(&self,
+                                  client: &C,
+                                  id_token: &str,
+                                  scopes: &[String])
+                                  -> client::Result<Token> {
+
+        match self.adapter {
+            // The application default creds are scoped to a user, and thus are not
+            // a service account. As such we can't use them for token delegation.
+            AuthAdapter::ApplicationDefault(ref auth) => auth.refresh_token(client, scopes),
+            AuthAdapter::ServiceAccount(ref auth) => {
+                let kid = get_jwt_kid(id_token)?;
+                let cert = self.get_google_auth_pkey(client, &kid)?;
+
+                #[derive(Deserialize)]
+                struct TokenInfo {
+                    email: Option<String>,
+                }
+
+                let mut info = jwt::decode::<TokenInfo>(id_token,
+                                                        &*cert,
+                                                        &jwt::Validation {
+                                                             algorithms:
+                                                                 Some(vec![jwt::Algorithm::RS256]),
+                                                             leeway: 1000 * 60, // 60 seconds
+                                                             ..Default::default()
+                                                         })
+                        .map_err(|_| client::Error::Unauthorized)?;
+
+                let email = info.claims
+                    .email
+                    .take()
+                    .ok_or(client::Error::Unauthorized)?;
+
+                auth.fetch_token(client, Some(&email), scopes)
+            }
+        }
+    }
+
     pub fn token<C: ApiClient>(&self, client: &C, scopes: &[String]) -> client::Result<Token> {
         {
             let (ref cached_token, ref cached_scopes) = *self.token_scopes
@@ -141,7 +180,7 @@ enum AuthAdapter {
 impl AuthAdapter {
     fn refresh_token<C: ApiClient>(&self, client: &C, scopes: &[String]) -> client::Result<Token> {
         match *self {
-            AuthAdapter::ServiceAccount(ref auth) => auth.refresh_token(client, scopes),
+            AuthAdapter::ServiceAccount(ref auth) => auth.fetch_token(client, None, scopes),
             AuthAdapter::ApplicationDefault(ref auth) => auth.refresh_token(client, scopes),
         }
     }
@@ -269,7 +308,11 @@ struct ServiceAccountMeta {
 }
 
 impl ServiceAccountAuth {
-    fn refresh_token<C: ApiClient>(&self, client: &C, scopes: &[String]) -> client::Result<Token> {
+    fn fetch_token<C: ApiClient>(&self,
+                                 client: &C,
+                                 sub: Option<&str>,
+                                 scopes: &[String])
+                                 -> client::Result<Token> {
         trace!("refreshing service account oauth token");
 
         let scope = if scopes.is_empty() {
@@ -296,7 +339,7 @@ impl ServiceAccountAuth {
             scope: scope,
             iat: iat,
             exp: exp,
-            sub: None,
+            sub: sub,
         };
 
         let header = jwt::Header::new(jwt::Algorithm::RS256);
@@ -316,4 +359,23 @@ impl ServiceAccountAuth {
 
         client.request(request).map(|(_, res)| res)
     }
+}
+
+fn get_jwt_kid(token: &str) -> client::Result<String> {
+    #[derive(Deserialize)]
+    struct Empty {};
+
+    let mut info = jwt::decode::<Empty>(token,
+                                        &[],
+                                        &jwt::Validation {
+                                             validate_signature: false,
+                                             validate_exp: false,
+                                             ..Default::default()
+                                         })
+            .map_err(|_| client::Error::Unauthorized)?;
+
+    info.header
+        .kid
+        .take()
+        .ok_or(client::Error::Unauthorized)
 }
