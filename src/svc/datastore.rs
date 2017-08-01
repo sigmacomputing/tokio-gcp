@@ -272,6 +272,8 @@ impl<'a> Hub<'a> {
         self.lookup_one(key)
     }
 
+    // Lookup a key using default read options:
+    // https://cloud.google.com/datastore/docs/reference/rest/v1/ReadOptions
     fn lookup_one(&self, key: Key) -> client::Result<Option<ValueMap>> {
         let req = LookupRequest {
             keys: Some(vec![key]),
