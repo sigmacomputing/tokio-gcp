@@ -80,8 +80,8 @@ impl GoogleCloudAuth {
         {
             let ref keyrings = *self.keyrings.read().expect("lock to not be poisoned");
             if let Some(keyring) = keyrings.get(&ty) {
-                if let Some(pkey) = keyring.get(kid).ok() {
-                    if !keyring.is_expired() {
+                if !keyring.is_expired() {
+                    if let Some(pkey) = keyring.get(kid).ok() {
                         return Ok(pkey);
                     }
                 }
@@ -91,7 +91,9 @@ impl GoogleCloudAuth {
         // check if we were blocked on another writer
         let ref mut keyrings = *self.keyrings.write().expect("lock to not be poisoned");
         if let Some(keyring) = keyrings.get(&ty) {
-            return keyring.get(kid);
+            if !keyring.is_expired() {
+                return keyring.get(kid);
+            }
         }
 
         let keyring = gcert::fetch(client, ty)?;

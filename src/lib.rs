@@ -1,6 +1,7 @@
 extern crate base64;
 extern crate chrono;
 extern crate futures;
+#[macro_use]
 extern crate hyper;
 extern crate hyper_tls;
 extern crate jsonwebtoken as jwt;
