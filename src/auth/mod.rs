@@ -44,7 +44,7 @@ impl Token {
         let bearer = hyper::header::Bearer { token: self.access_token };
         hyper::header::Authorization(bearer)
     }
-    fn is_expired(&self) -> bool {
+    pub fn is_expired(&self) -> bool {
         self.expires_at.map_or(true, |at| UTC::now() > at)
     }
 }

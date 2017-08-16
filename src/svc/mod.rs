@@ -1,3 +1,5 @@
+mod common;
+
 pub mod bigquery;
 pub mod cloudkms;
 pub mod datastore;
