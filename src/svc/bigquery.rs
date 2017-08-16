@@ -7,9 +7,9 @@ use serde::{Serialize, Deserialize};
 use serde_json;
 
 use client::{self, ApiClient};
+use svc::common;
 
 static BIGQUERY_ROOT: &str = "https://www.googleapis.com/bigquery/v2/projects";
-static QUERY_RESOURCE_KIND: &str = "bigquery#queryResults";
 
 pub struct BigQueryService {}
 pub type Hub<'a> = client::Hub<'a, BigQueryService>;
@@ -110,7 +110,7 @@ pub struct TableMeta {
     pub type0: String,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct TableReference {
     #[serde(rename="projectId")]
     pub project_id: String,
@@ -154,105 +154,91 @@ pub struct TableField {
     pub fields: Option<Vec<TableField>>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SubmitQueryRequest {
-    pub kind: String,
-    pub query: String,
+pub struct JobResource {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub timeout_ms: Option<usize>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub use_legacy_sql: Option<bool>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub use_query_cache: Option<bool>,
+    pub id: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dry_run: Option<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_results: Option<usize>,
+    pub job_reference: Option<JobReference>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<JobStatus>,
+
+    pub configuration: JobConfiguration,
 }
 
-impl Default for SubmitQueryRequest {
-    fn default() -> Self {
-        SubmitQueryRequest {
-            kind: QUERY_RESOURCE_KIND.to_string(),
-            query: Default::default(),
-            timeout_ms: None,
-            use_legacy_sql: None,
-            use_query_cache: None,
-            dry_run: None,
-            max_results: None,
-        }
-    }
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct JobConfiguration {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query: Option<QueryResource>,
 }
 
-#[derive(Deserialize, Default, Debug)]
-pub struct SubmitQueryResponse {
-    pub schema: Option<TableFieldSchema>,
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryResource {
+    pub query: String,
+    pub use_legacy_sql: bool,
+    pub use_query_cache: bool,
 
-    #[serde(rename="jobReference")]
-    pub job_reference: JobReference,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination_table: Option<TableReference>,
+}
 
-    #[serde(rename="totalRows")]
-    pub total_rows: Option<String>,
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct JobStatus {
+    pub state: String,
 
-    pub rows: Option<Vec<TableRow>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_result: Option<QueryError>,
 
-    #[serde(rename="jobComplete")]
-    pub job_complete: bool,
-
-    #[serde(rename="pageToken")]
-    pub page_token: Option<String>,
-
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub errors: Option<Vec<QueryError>>,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct JobReference {
-    #[serde(rename="projectId")]
     pub project_id: String,
 
-    #[serde(rename="jobId")]
     pub job_id: String,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct QueryError {
     pub reason: Option<String>,
     pub location: Option<String>,
     pub message: Option<String>,
-
-    #[serde(rename="debugInfo")]
     pub debug_info: Option<String>,
 }
 
-#[derive(Deserialize, Default, Debug)]
-pub struct CancelQueryResponse {}
-
 #[derive(Serialize, Default, Debug)]
-pub struct AwaitQueryRequest {
-    #[serde(rename="timeoutMs")]
+#[serde(rename_all = "camelCase")]
+pub struct GetQueryResultsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<usize>,
 
-    #[serde(rename="maxResults")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_results: Option<usize>,
 
-    #[serde(rename="startIndex")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_index: Option<usize>,
 
-    #[serde(rename="pageToken")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub page_token: Option<String>,
 }
 
-impl AwaitQueryRequest {
+impl GetQueryResultsRequest {
     fn to_query(&self) -> String {
         let mut params = Vec::new();
         if let Some(ref timeout_ms) = self.timeout_ms {
@@ -272,7 +258,7 @@ impl AwaitQueryRequest {
 }
 
 #[derive(Deserialize, Default, Debug)]
-pub struct AwaitQueryResponse {
+pub struct GetQueryResultsResponse {
     pub schema: Option<TableFieldSchema>,
 
     #[serde(rename="jobReference")]
@@ -361,47 +347,57 @@ impl<'a> Hub<'a> {
         self.get_bq::<DescribeTableResponse>(&uri, token.to_string())
     }
 
-    pub fn submit_query(&self,
-                        token: &str,
-                        project_id: &str,
-                        req: &SubmitQueryRequest)
-                        -> client::Result<SubmitQueryResponse> {
-        let path = format!("{}/{}/queries", BIGQUERY_ROOT, project_id);
+    pub fn create_job(&self,
+                      token: &str,
+                      project_id: &str,
+                      req: &JobResource)
+                      -> client::Result<JobResource> {
+        let path = format!("{}/{}/jobs", BIGQUERY_ROOT, project_id);
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.post_bq::<_, SubmitQueryResponse>(&uri, req, token.to_string())
+        self.post_bq::<_, _>(&uri, req, token.to_string())
     }
 
-    pub fn await_query(&self,
-                       token: &str,
-                       project_id: &str,
-                       job_id: &str,
-                       req: &AwaitQueryRequest)
-                       -> client::Result<AwaitQueryResponse> {
+    pub fn cancel_job(&self,
+                      token: &str,
+                      project_id: &str,
+                      job_id: &str)
+                      -> client::Result<JobResource> {
+        let path = format!("{}/{}/jobs/{}/cancel", BIGQUERY_ROOT, project_id, job_id);
+        let uri = Uri::from_str(&path).expect("uri to be valid");
+
+        #[derive(Deserialize, Debug)]
+        #[serde(rename_all = "camelCase")]
+        struct Response {
+            pub job: JobResource,
+        }
+
+        self.post_bq::<_, Response>(&uri, common::Empty {}, token.to_string())
+            .map(|r| r.job)
+    }
+
+    pub fn get_job(&self,
+                   token: &str,
+                   project_id: &str,
+                   job_id: &str)
+                   -> client::Result<JobResource> {
+        let path = format!("{}/{}/jobs/{}", BIGQUERY_ROOT, project_id, job_id);
+        let uri = Uri::from_str(&path).expect("uri to be valid");
+        self.get_bq::<_>(&uri, token.to_string())
+    }
+
+    pub fn get_query_results(&self,
+                             token: &str,
+                             project_id: &str,
+                             job_id: &str,
+                             req: &GetQueryResultsRequest)
+                             -> client::Result<GetQueryResultsResponse> {
         let path = format!("{}/{}/queries/{}?{}",
                            BIGQUERY_ROOT,
                            project_id,
                            job_id,
                            req.to_query());
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.get_bq::<AwaitQueryResponse>(&uri, token.to_string())
-    }
-
-    pub fn cancel_query(&self,
-                        token: &str,
-                        project_id: &str,
-                        job_id: &str)
-                        -> client::Result<CancelQueryResponse> {
-        let path = format!("{}/{}/jobs/{}/cancel", BIGQUERY_ROOT, project_id, job_id);
-        let uri = Uri::from_str(&path).expect("uri to be valid");
-
-        let mut req = hyper::Request::new(hyper::Method::Post, uri);
-        req.headers_mut().set(hyper::header::ContentType::json());
-
-        let auth = hyper::header::Authorization(hyper::header::Bearer { token: token.to_string() });
-        req.headers_mut().set(auth);
-
-        self.request::<CancelQueryResponse>(req)
-            .map(|(_, res)| res)
+        self.get_bq::<_>(&uri, token.to_string())
     }
 
     // helper method for making a GET request
