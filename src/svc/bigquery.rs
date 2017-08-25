@@ -94,9 +94,22 @@ pub struct TableMeta {
     pub id: String,
     pub table_reference: TableReference,
     pub friendly_name: Option<String>,
+    pub view: Option<ViewMeta>,
 
     #[serde(rename = "type")]
     pub type0: String,
+}
+
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewMeta {
+    query: String,
+    #[serde(default = "default_view_use_legacy_sql")]
+    use_legacy_sql: bool,
+}
+
+fn default_view_use_legacy_sql() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -125,6 +138,9 @@ pub struct DescribeTableResponse {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_data_configuration: Option<ExtDataConfig>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub view: Option<ViewMeta>,
 }
 
 #[derive(Deserialize, Default, Debug)]
