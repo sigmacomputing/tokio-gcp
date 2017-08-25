@@ -103,7 +103,9 @@ pub struct TableMeta {
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ViewMeta {
-    pub query: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+
     #[serde(default = "default_view_use_legacy_sql")]
     pub use_legacy_sql: bool,
 }
