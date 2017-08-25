@@ -103,9 +103,9 @@ pub struct TableMeta {
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ViewMeta {
-    query: String,
+    pub query: String,
     #[serde(default = "default_view_use_legacy_sql")]
-    use_legacy_sql: bool,
+    pub use_legacy_sql: bool,
 }
 
 fn default_view_use_legacy_sql() -> bool {
