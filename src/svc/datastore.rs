@@ -33,11 +33,11 @@ pub struct CommitRequest {
 
 #[derive(Deserialize, Default, Debug)]
 pub struct CommitResponse {
-    #[serde(rename="mutationResults")]
+    #[serde(rename = "mutationResults")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mutation_results: Option<Vec<MutationResult>>,
 
-    #[serde(rename="indexUpdates")]
+    #[serde(rename = "indexUpdates")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index_updates: Option<i32>,
 }
@@ -53,7 +53,7 @@ pub struct Mutation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub update: Option<Entity>,
 
-    #[serde(rename="baseVersion")]
+    #[serde(rename = "baseVersion")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_version: Option<String>,
 
@@ -66,7 +66,7 @@ pub struct MutationResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 
-    #[serde(rename="conflictDetected")]
+    #[serde(rename = "conflictDetected")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conflict_detected: Option<bool>,
 
@@ -79,7 +79,7 @@ pub struct LookupRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keys: Option<Vec<Key>>,
 
-    #[serde(rename="readOptions")]
+    #[serde(rename = "readOptions")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_options: Option<ReadOptions>,
 }
@@ -101,7 +101,7 @@ pub struct ReadOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction: Option<String>,
 
-    #[serde(rename="readConsistency")]
+    #[serde(rename = "readConsistency")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_consistency: Option<String>,
 }
@@ -132,7 +132,7 @@ pub struct Entity {
 pub struct Key {
     pub path: Vec<PathElement>,
 
-    #[serde(rename="partitionId")]
+    #[serde(rename = "partitionId")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub partition_id: Option<PartitionId>,
 }
@@ -150,56 +150,56 @@ pub struct PathElement {
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct PartitionId {
-    #[serde(rename="projectId")]
+    #[serde(rename = "projectId")]
     pub project_id: String,
 
-    #[serde(rename="namespaceId")]
+    #[serde(rename = "namespaceId")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub namespace_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct Value {
-    #[serde(rename="entityValue")]
+    #[serde(rename = "entityValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entity_value: Option<Entity>,
 
-    #[serde(rename="timestampValue")]
+    #[serde(rename = "timestampValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp_value: Option<String>,
 
-    #[serde(rename="stringValue")]
+    #[serde(rename = "stringValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub string_value: Option<String>,
 
-    #[serde(rename="doubleValue")]
+    #[serde(rename = "doubleValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub double_value: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub meaning: Option<i32>,
 
-    #[serde(rename="excludeFromIndexes")]
+    #[serde(rename = "excludeFromIndexes")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude_from_indexes: Option<bool>,
 
-    #[serde(rename="blobValue")]
+    #[serde(rename = "blobValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blob_value: Option<String>,
 
-    #[serde(rename="keyValue")]
+    #[serde(rename = "keyValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key_value: Option<Key>,
 
-    #[serde(rename="booleanValue")]
+    #[serde(rename = "booleanValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub boolean_value: Option<bool>,
 
-    #[serde(rename="integerValue")]
+    #[serde(rename = "integerValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub integer_value: Option<String>,
 
-    #[serde(rename="nullValue")]
+    #[serde(rename = "nullValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub null_value: Option<String>,
 
@@ -214,11 +214,12 @@ pub struct Value {
 
 
 impl<'a> Hub<'a> {
-    pub fn insert_entity_auto_id(&self,
-                                 kind: &str,
-                                 ns: &str,
-                                 props: ValueMap)
-                                 -> client::Result<String> {
+    pub fn insert_entity_auto_id(
+        &self,
+        kind: &str,
+        ns: &str,
+        props: ValueMap,
+    ) -> client::Result<String> {
         let key = self.mk_key(kind, Some(ns), None, None);
         let res = self.insert(key, props)?;
         let mut results = res.mutation_results.expect("mutations to be valid");
@@ -227,12 +228,13 @@ impl<'a> Hub<'a> {
         Ok(key.path.remove(0).id.expect("id to be valid"))
     }
 
-    pub fn insert_entity_by_name(&self,
-                                 kind: &str,
-                                 ns: &str,
-                                 name: &str,
-                                 props: ValueMap)
-                                 -> client::Result<()> {
+    pub fn insert_entity_by_name(
+        &self,
+        kind: &str,
+        ns: &str,
+        name: &str,
+        props: ValueMap,
+    ) -> client::Result<()> {
         let key = self.mk_key(kind, Some(ns), Some(name), None);
         self.insert(key, props)?;
         Ok(())
@@ -263,11 +265,12 @@ impl<'a> Hub<'a> {
         self.lookup_one(key)
     }
 
-    pub fn lookup_by_name(&self,
-                          kind: &str,
-                          ns: &str,
-                          name: &str)
-                          -> client::Result<Option<ValueMap>> {
+    pub fn lookup_by_name(
+        &self,
+        kind: &str,
+        ns: &str,
+        name: &str,
+    ) -> client::Result<Option<ValueMap>> {
         let key = self.mk_key(kind, Some(ns), Some(name), None);
         self.lookup_one(key)
     }
@@ -283,21 +286,24 @@ impl<'a> Hub<'a> {
         let uri = self.mk_uri("lookup");
         let res = self.post::<_, LookupResponse>(&uri, req, &[])?;
 
-        Ok(res.found
-               .and_then(|mut f| if f.len() != 1 {
-                             None
-                         } else {
-                             f.remove(0).entity
-                         })
-               .and_then(|e| e.properties))
+        Ok(
+            res.found
+                .and_then(|mut f| if f.len() != 1 {
+                    None
+                } else {
+                    f.remove(0).entity
+                })
+                .and_then(|e| e.properties),
+        )
     }
 
-    pub fn update_by_id(&self,
-                        kind: &str,
-                        ns: &str,
-                        id: &str,
-                        props: ValueMap)
-                        -> client::Result<()> {
+    pub fn update_by_id(
+        &self,
+        kind: &str,
+        ns: &str,
+        id: &str,
+        props: ValueMap,
+    ) -> client::Result<()> {
         let key = self.mk_key(kind, Some(ns), None, Some(id));
 
         let entity = Entity {
@@ -354,10 +360,12 @@ impl<'a> Hub<'a> {
     }
 
     fn mk_uri(&self, action: &str) -> Uri {
-        let path = format!("{}/projects/{}:{}",
-                           DATASTORE_ROOT,
-                           self.project_id(),
-                           action);
+        let path = format!(
+            "{}/projects/{}:{}",
+            DATASTORE_ROOT,
+            self.project_id(),
+            action
+        );
         Uri::from_str(&path).expect("uri to be valid")
     }
 

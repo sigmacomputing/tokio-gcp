@@ -40,7 +40,7 @@ impl ListDatasetsRequest {
 
 #[derive(Deserialize, Default, Debug)]
 pub struct ListDatasetsResponse {
-    #[serde(rename="nextPageToken")]
+    #[serde(rename = "nextPageToken")]
     pub next_page_token: Option<String>,
 
     pub datasets: Vec<DatasetMeta>,
@@ -50,19 +50,19 @@ pub struct ListDatasetsResponse {
 pub struct DatasetMeta {
     pub id: String,
 
-    #[serde(rename="datasetReference")]
+    #[serde(rename = "datasetReference")]
     pub dataset_reference: DatasetReference,
 
-    #[serde(rename="friendlyName")]
+    #[serde(rename = "friendlyName")]
     pub friendly_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct DatasetReference {
-    #[serde(rename="projectId")]
+    #[serde(rename = "projectId")]
     pub project_id: String,
 
-    #[serde(rename="datasetId")]
+    #[serde(rename = "datasetId")]
     pub dataset_id: String,
 }
 
@@ -87,12 +87,12 @@ impl ListTablesRequest {
 
 #[derive(Deserialize, Default, Debug)]
 pub struct ListTablesResponse {
-    #[serde(rename="nextPageToken")]
+    #[serde(rename = "nextPageToken")]
     pub next_page_token: Option<String>,
 
     pub tables: Vec<TableMeta>,
 
-    #[serde(rename="totalItems")]
+    #[serde(rename = "totalItems")]
     pub total_items: usize,
 }
 
@@ -100,25 +100,25 @@ pub struct ListTablesResponse {
 pub struct TableMeta {
     pub id: String,
 
-    #[serde(rename="tableReference")]
+    #[serde(rename = "tableReference")]
     pub table_reference: TableReference,
 
-    #[serde(rename="friendlyName")]
+    #[serde(rename = "friendlyName")]
     pub friendly_name: Option<String>,
 
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub type0: String,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct TableReference {
-    #[serde(rename="projectId")]
+    #[serde(rename = "projectId")]
     pub project_id: String,
 
-    #[serde(rename="datasetId")]
+    #[serde(rename = "datasetId")]
     pub dataset_id: String,
 
-    #[serde(rename="tableId")]
+    #[serde(rename = "tableId")]
     pub table_id: String,
 }
 
@@ -127,13 +127,13 @@ pub struct DescribeTableResponse {
     pub id: String,
     pub schema: TableFieldSchema,
 
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub type0: String,
 
-    #[serde(rename="tableReference")]
+    #[serde(rename = "tableReference")]
     pub table_reference: TableReference,
 
-    #[serde(rename="friendlyName")]
+    #[serde(rename = "friendlyName")]
     pub friendly_name: Option<String>,
 }
 
@@ -147,7 +147,7 @@ pub struct TableField {
     pub name: String,
     pub mode: String,
 
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub type0: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -261,18 +261,18 @@ impl GetQueryResultsRequest {
 pub struct GetQueryResultsResponse {
     pub schema: Option<TableFieldSchema>,
 
-    #[serde(rename="jobReference")]
+    #[serde(rename = "jobReference")]
     pub job_reference: Option<JobReference>,
 
-    #[serde(rename="totalRows")]
+    #[serde(rename = "totalRows")]
     pub total_rows: Option<String>,
 
     pub rows: Option<Vec<TableRow>>,
 
-    #[serde(rename="jobComplete")]
+    #[serde(rename = "jobComplete")]
     pub job_complete: bool,
 
-    #[serde(rename="pageToken")]
+    #[serde(rename = "pageToken")]
     pub page_token: Option<String>,
 
     pub errors: Option<Vec<QueryError>>,
@@ -303,65 +303,76 @@ impl Default for Cell {
 }
 
 impl<'a> Hub<'a> {
-    pub fn list_datasets(&self,
-                         token: &str,
-                         project_id: &str,
-                         req: &ListDatasetsRequest)
-                         -> client::Result<ListDatasetsResponse> {
-        let path = format!("{}/{}/datasets?{}",
-                           BIGQUERY_ROOT,
-                           project_id,
-                           req.to_query());
+    pub fn list_datasets(
+        &self,
+        token: &str,
+        project_id: &str,
+        req: &ListDatasetsRequest,
+    ) -> client::Result<ListDatasetsResponse> {
+        let path = format!(
+            "{}/{}/datasets?{}",
+            BIGQUERY_ROOT,
+            project_id,
+            req.to_query()
+        );
 
         let uri = Uri::from_str(&path).expect("uri to be valid");
         self.get_bq::<ListDatasetsResponse>(&uri, token.to_string())
     }
 
-    pub fn list_tables(&self,
-                       token: &str,
-                       project_id: &str,
-                       dataset_id: &str,
-                       req: &ListTablesRequest)
-                       -> client::Result<ListTablesResponse> {
-        let path = format!("{}/{}/datasets/{}/tables?{}",
-                           BIGQUERY_ROOT,
-                           project_id,
-                           dataset_id,
-                           req.to_query());
+    pub fn list_tables(
+        &self,
+        token: &str,
+        project_id: &str,
+        dataset_id: &str,
+        req: &ListTablesRequest,
+    ) -> client::Result<ListTablesResponse> {
+        let path = format!(
+            "{}/{}/datasets/{}/tables?{}",
+            BIGQUERY_ROOT,
+            project_id,
+            dataset_id,
+            req.to_query()
+        );
         let uri = Uri::from_str(&path).expect("uri to be valid");
         self.get_bq::<ListTablesResponse>(&uri, token.to_string())
     }
 
-    pub fn describe_table(&self,
-                          token: &str,
-                          project_id: &str,
-                          dataset_id: &str,
-                          table_id: &str)
-                          -> client::Result<DescribeTableResponse> {
-        let path = format!("{}/{}/datasets/{}/tables/{}",
-                           BIGQUERY_ROOT,
-                           project_id,
-                           dataset_id,
-                           table_id);
+    pub fn describe_table(
+        &self,
+        token: &str,
+        project_id: &str,
+        dataset_id: &str,
+        table_id: &str,
+    ) -> client::Result<DescribeTableResponse> {
+        let path = format!(
+            "{}/{}/datasets/{}/tables/{}",
+            BIGQUERY_ROOT,
+            project_id,
+            dataset_id,
+            table_id
+        );
         let uri = Uri::from_str(&path).expect("uri to be valid");
         self.get_bq::<DescribeTableResponse>(&uri, token.to_string())
     }
 
-    pub fn create_job(&self,
-                      token: &str,
-                      project_id: &str,
-                      req: &JobResource)
-                      -> client::Result<JobResource> {
+    pub fn create_job(
+        &self,
+        token: &str,
+        project_id: &str,
+        req: &JobResource,
+    ) -> client::Result<JobResource> {
         let path = format!("{}/{}/jobs", BIGQUERY_ROOT, project_id);
         let uri = Uri::from_str(&path).expect("uri to be valid");
         self.post_bq::<_, _>(&uri, req, token.to_string())
     }
 
-    pub fn cancel_job(&self,
-                      token: &str,
-                      project_id: &str,
-                      job_id: &str)
-                      -> client::Result<JobResource> {
+    pub fn cancel_job(
+        &self,
+        token: &str,
+        project_id: &str,
+        job_id: &str,
+    ) -> client::Result<JobResource> {
         let path = format!("{}/{}/jobs/{}/cancel", BIGQUERY_ROOT, project_id, job_id);
         let uri = Uri::from_str(&path).expect("uri to be valid");
 
@@ -375,34 +386,39 @@ impl<'a> Hub<'a> {
             .map(|r| r.job)
     }
 
-    pub fn get_job(&self,
-                   token: &str,
-                   project_id: &str,
-                   job_id: &str)
-                   -> client::Result<JobResource> {
+    pub fn get_job(
+        &self,
+        token: &str,
+        project_id: &str,
+        job_id: &str,
+    ) -> client::Result<JobResource> {
         let path = format!("{}/{}/jobs/{}", BIGQUERY_ROOT, project_id, job_id);
         let uri = Uri::from_str(&path).expect("uri to be valid");
         self.get_bq::<_>(&uri, token.to_string())
     }
 
-    pub fn get_query_results(&self,
-                             token: &str,
-                             project_id: &str,
-                             job_id: &str,
-                             req: &GetQueryResultsRequest)
-                             -> client::Result<GetQueryResultsResponse> {
-        let path = format!("{}/{}/queries/{}?{}",
-                           BIGQUERY_ROOT,
-                           project_id,
-                           job_id,
-                           req.to_query());
+    pub fn get_query_results(
+        &self,
+        token: &str,
+        project_id: &str,
+        job_id: &str,
+        req: &GetQueryResultsRequest,
+    ) -> client::Result<GetQueryResultsResponse> {
+        let path = format!(
+            "{}/{}/queries/{}?{}",
+            BIGQUERY_ROOT,
+            project_id,
+            job_id,
+            req.to_query()
+        );
         let uri = Uri::from_str(&path).expect("uri to be valid");
         self.get_bq::<_>(&uri, token.to_string())
     }
 
     // helper method for making a GET request
     fn get_bq<D>(&self, uri: &hyper::Uri, token: String) -> client::Result<D>
-        where for<'de> D: 'static + Send + Deserialize<'de>
+    where
+        for<'de> D: 'static + Send + Deserialize<'de>,
     {
         let mut req = hyper::Request::new(hyper::Method::Get, uri.clone());
         let auth = hyper::header::Authorization(hyper::header::Bearer { token });
@@ -412,12 +428,14 @@ impl<'a> Hub<'a> {
     }
 
     // helper method for making a POST request with a JSON body
-    fn post_bq<B: Serialize, D>(&self,
-                                uri: &hyper::Uri,
-                                body: B,
-                                token: String)
-                                -> client::Result<D>
-        where for<'de> D: 'static + Send + Deserialize<'de>
+    fn post_bq<B: Serialize, D>(
+        &self,
+        uri: &hyper::Uri,
+        body: B,
+        token: String,
+    ) -> client::Result<D>
+    where
+        for<'de> D: 'static + Send + Deserialize<'de>,
     {
         let mut req = hyper::Request::new(hyper::Method::Post, uri.clone());
         req.headers_mut().set(hyper::header::ContentType::json());

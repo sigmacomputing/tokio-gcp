@@ -41,13 +41,12 @@ impl KeyRing {
         self.expires_at.map_or(true, |at| UTC::now() > at)
     }
     pub fn get(&self, kid: &str) -> client::Result<PubKey> {
-        self.keys
-            .get(kid)
-            .map(|pk| PubKey(pk.clone()))
-            .ok_or_else(|| {
-                            error!("certificate not found: {}", kid);
-                            client::Error::Unauthorized
-                        })
+        self.keys.get(kid).map(|pk| PubKey(pk.clone())).ok_or_else(
+            || {
+                error!("certificate not found: {}", kid);
+                client::Error::Unauthorized
+            },
+        )
     }
 }
 
@@ -63,27 +62,33 @@ pub fn fetch<C: ApiClient>(client: &C, ty: KeyRingType) -> client::Result<KeyRin
     let keys = json_pem_map
         .into_iter()
         .map(|(kid, pem)| {
-            Ok((kid,
-                Arc::new(X509::from_pem(pem.as_bytes())?
-                             .public_key()?
-                             .rsa()?
-                             .public_key_to_der_pkcs1()?
-                             .into_boxed_slice())))
+            Ok((
+                kid,
+                Arc::new(
+                    X509::from_pem(pem.as_bytes())?
+                        .public_key()?
+                        .rsa()?
+                        .public_key_to_der_pkcs1()?
+                        .into_boxed_slice(),
+                ),
+            ))
 
         })
         .collect::<Result<HashMap<_, _>, _>>()
         .map_err(|e| client::Error::OpenSslError(e))?;
 
     let expires = mk_expires_at(headers);
-    info!("Fetched certificates from {}, will expire at {}",
-          uri,
-          expires
-              .map(|dt| dt.to_rfc3339())
-              .unwrap_or(String::from("<unknown>")));
+    info!(
+        "Fetched certificates from {}, will expire at {}",
+        uri,
+        expires.map(|dt| dt.to_rfc3339()).unwrap_or(
+            String::from("<unknown>"),
+        )
+    );
     Ok(KeyRing {
-           keys: keys,
-           expires_at: expires,
-       })
+        keys: keys,
+        expires_at: expires,
+    })
 }
 
 

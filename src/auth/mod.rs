@@ -58,25 +58,28 @@ pub struct GoogleCloudAuth {
 }
 
 impl GoogleCloudAuth {
-    pub fn get_firebase_pkey<C: ApiClient>(&self,
-                                           client: &C,
-                                           kid: &str)
-                                           -> client::Result<gcert::PubKey> {
+    pub fn get_firebase_pkey<C: ApiClient>(
+        &self,
+        client: &C,
+        kid: &str,
+    ) -> client::Result<gcert::PubKey> {
         self.get_pkey(client, kid, KeyRingType::Firebase)
     }
 
-    pub fn get_google_auth_pkey<C: ApiClient>(&self,
-                                              client: &C,
-                                              kid: &str)
-                                              -> client::Result<gcert::PubKey> {
+    pub fn get_google_auth_pkey<C: ApiClient>(
+        &self,
+        client: &C,
+        kid: &str,
+    ) -> client::Result<gcert::PubKey> {
         self.get_pkey(client, kid, KeyRingType::GoogleAuth)
     }
 
-    fn get_pkey<C: ApiClient>(&self,
-                              client: &C,
-                              kid: &str,
-                              ty: KeyRingType)
-                              -> client::Result<gcert::PubKey> {
+    fn get_pkey<C: ApiClient>(
+        &self,
+        client: &C,
+        kid: &str,
+        ty: KeyRingType,
+    ) -> client::Result<gcert::PubKey> {
         {
             let ref keyrings = *self.keyrings.read().expect("lock to not be poisoned");
             if let Some(keyring) = keyrings.get(&ty) {
@@ -101,11 +104,12 @@ impl GoogleCloudAuth {
         keyrings[&ty].get(kid)
     }
 
-    pub fn delegate<C: ApiClient>(&self,
-                                  client: &C,
-                                  id_token: &str,
-                                  scopes: &[String])
-                                  -> client::Result<Token> {
+    pub fn delegate<C: ApiClient>(
+        &self,
+        client: &C,
+        id_token: &str,
+        scopes: &[String],
+    ) -> client::Result<Token> {
 
         match self.adapter {
             // The application default creds are scoped to a user, and thus are not
@@ -120,20 +124,17 @@ impl GoogleCloudAuth {
                     email: Option<String>,
                 }
 
-                let mut info = jwt::decode::<TokenInfo>(id_token,
-                                                        &*cert,
-                                                        &jwt::Validation {
-                                                             algorithms:
-                                                                 Some(vec![jwt::Algorithm::RS256]),
-                                                             leeway: 1000 * 60, // 60 seconds
-                                                             ..Default::default()
-                                                         })
-                        .map_err(|_| client::Error::Unauthorized)?;
+                let mut info = jwt::decode::<TokenInfo>(
+                    id_token,
+                    &*cert,
+                    &jwt::Validation {
+                        algorithms: Some(vec![jwt::Algorithm::RS256]),
+                        leeway: 1000 * 60, // 60 seconds
+                        ..Default::default()
+                    },
+                ).map_err(|_| client::Error::Unauthorized)?;
 
-                let email = info.claims
-                    .email
-                    .take()
-                    .ok_or(client::Error::Unauthorized)?;
+                let email = info.claims.email.take().ok_or(client::Error::Unauthorized)?;
 
                 auth.fetch_token(client, Some(&email), scopes)
             }
@@ -142,20 +143,20 @@ impl GoogleCloudAuth {
 
     pub fn token<C: ApiClient>(&self, client: &C, scopes: &[String]) -> client::Result<Token> {
         {
-            let (ref cached_token, ref cached_scopes) = *self.token_scopes
-                                                             .read()
-                                                             .expect("lock to not be poisoned");
+            let (ref cached_token, ref cached_scopes) =
+                *self.token_scopes.read().expect("lock to not be poisoned");
             if !cached_token.is_expired() && cached_scopes.as_slice() == scopes {
-                trace!("reusing cached service account oauth token (cached = {:?}, requested = {:?})",
-                       cached_scopes.as_slice(),
-                       scopes);
+                trace!(
+                    "reusing cached service account oauth token (cached = {:?}, requested = {:?})",
+                    cached_scopes.as_slice(),
+                    scopes
+                );
                 return Ok((*cached_token).clone());
             }
         }
 
-        let (ref mut cached_token, ref mut cached_scopes) = *self.token_scopes
-                                                                 .write()
-                                                                 .expect("lock to not be poisoned");
+        let (ref mut cached_token, ref mut cached_scopes) =
+            *self.token_scopes.write().expect("lock to not be poisoned");
 
         // check is we were blocked on another writer
         if !cached_token.is_expired() && cached_scopes.as_slice() == scopes {
@@ -197,11 +198,13 @@ pub fn default_credentials() -> GoogleCloudAuth {
         debug!("Using Google Cloud credentials from [application_default_credentials]");
         adapter
     } else {
-        println!("
+        println!(
+            "
             Unable to obtain Google Cloud credentials. Please ensure you have either:
             A) Set GOOGLE_APPLICATION_CREDENTIALS to a valid service account key file
             B) Run the following command 'gcloud auth application-default login'
-        ");
+        "
+        );
         ::std::process::exit(1)
     };
 
@@ -217,11 +220,11 @@ fn credentials_from_env() -> Option<AuthAdapter> {
     #[derive(Deserialize)]
     #[allow(dead_code)]
     struct RawKey {
-        #[serde(rename="type")]
+        #[serde(rename = "type")]
         key_type: String,
         project_id: String,
         private_key_id: String,
-        #[serde(rename="private_key")]
+        #[serde(rename = "private_key")]
         private_key_pem: String,
         client_email: String,
         client_id: String,
@@ -247,7 +250,9 @@ fn credentials_from_env() -> Option<AuthAdapter> {
             private_key_der: private_key_der,
         };
 
-        return Some(AuthAdapter::ServiceAccount(ServiceAccountAuth { meta: meta }));
+        return Some(AuthAdapter::ServiceAccount(
+            ServiceAccountAuth { meta: meta },
+        ));
     }
     None
 }
@@ -288,9 +293,7 @@ impl ApplicationDefaultAuth {
         let uri = Uri::from_str(APP_DEFAULT_URI).expect("app default uri to be valid");
         let mut request = hyper::Request::new(hyper::Method::Post, uri);
         request.set_body(body);
-        request
-            .headers_mut()
-            .set(ContentType::form_url_encoded());
+        request.headers_mut().set(ContentType::form_url_encoded());
 
         client.request(request).map(|(_, res)| res)
     }
@@ -310,11 +313,12 @@ struct ServiceAccountMeta {
 }
 
 impl ServiceAccountAuth {
-    fn fetch_token<C: ApiClient>(&self,
-                                 client: &C,
-                                 sub: Option<&str>,
-                                 scopes: &[String])
-                                 -> client::Result<Token> {
+    fn fetch_token<C: ApiClient>(
+        &self,
+        client: &C,
+        sub: Option<&str>,
+        scopes: &[String],
+    ) -> client::Result<Token> {
         trace!("refreshing service account oauth token");
 
         let scope = if scopes.is_empty() {
@@ -355,9 +359,7 @@ impl ServiceAccountAuth {
 
         let mut request = hyper::Request::new(hyper::Method::Post, self.meta.token_uri.clone());
         request.set_body(body);
-        request
-            .headers_mut()
-            .set(ContentType::form_url_encoded());
+        request.headers_mut().set(ContentType::form_url_encoded());
 
         client.request(request).map(|(_, res)| res)
     }
@@ -367,17 +369,15 @@ fn get_jwt_kid(token: &str) -> client::Result<String> {
     #[derive(Deserialize)]
     struct Empty {};
 
-    let mut info = jwt::decode::<Empty>(token,
-                                        &[],
-                                        &jwt::Validation {
-                                             validate_signature: false,
-                                             validate_exp: false,
-                                             ..Default::default()
-                                         })
-            .map_err(|_| client::Error::Unauthorized)?;
+    let mut info = jwt::decode::<Empty>(
+        token,
+        &[],
+        &jwt::Validation {
+            validate_signature: false,
+            validate_exp: false,
+            ..Default::default()
+        },
+    ).map_err(|_| client::Error::Unauthorized)?;
 
-    info.header
-        .kid
-        .take()
-        .ok_or(client::Error::Unauthorized)
+    info.header.kid.take().ok_or(client::Error::Unauthorized)
 }

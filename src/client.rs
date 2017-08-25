@@ -99,11 +99,11 @@ impl GoogleCloudClient {
 
         let remote = rx.wait().unwrap();
         Ok(GoogleCloudClient {
-               project_id: project_id.to_string(),
-               remote: remote,
-               auth: auth::default_credentials(),
-               _core_thread: Arc::new(core_thread),
-           })
+            project_id: project_id.to_string(),
+            remote: remote,
+            auth: auth::default_credentials(),
+            _core_thread: Arc::new(core_thread),
+        })
     }
     pub fn hub<S>(&self) -> Hub<S> {
         Hub {
@@ -143,58 +143,54 @@ impl<'a, S> ApiClient for Hub<'a, S> {
     fn token(&self, scopes: &[String]) -> Result<auth::Token> {
         self.client.auth.token(self, scopes)
     }
-    fn request<D: 'static + Send>(&self,
-                                  r: hyper::Request<hyper::Body>)
-                                  -> Result<(hyper::Headers, D)>
-        where for<'de> D: 'static + Send + Deserialize<'de>
+    fn request<D: 'static + Send>(
+        &self,
+        r: hyper::Request<hyper::Body>,
+    ) -> Result<(hyper::Headers, D)>
+    where
+        for<'de> D: 'static + Send + Deserialize<'de>,
     {
         trace!("send request: {:?}", r);
         let (tx, rx) = oneshot::channel();
 
-        self.client
-            .remote
-            .spawn(|handle| {
-                let work = access_hyper_client(handle).request(r);
-                work.and_then(|res| {
-                        trace!("recv response: {:?}", res);
-                        let status = res.status();
-                        let headers = res.headers().clone();
+        self.client.remote.spawn(|handle| {
+            let work = access_hyper_client(handle).request(r);
+            work.and_then(|res| {
+                trace!("recv response: {:?}", res);
+                let status = res.status();
+                let headers = res.headers().clone();
 
-                        res.body()
-                            .collect()
-                            .map(move |chunks| {
-                                trace!("fold chunks: {:?}", chunks);
+                res.body().collect().map(move |chunks| {
+                    trace!("fold chunks: {:?}", chunks);
 
-                                let body = chunks
-                                    .into_iter()
-                                    .fold(vec![], |mut acc, chunk| {
-                                        acc.extend_from_slice(&*chunk);
-                                        acc
-                                    });
+                    let body = chunks.into_iter().fold(vec![], |mut acc, chunk| {
+                        acc.extend_from_slice(&*chunk);
+                        acc
+                    });
 
-                                let res = if status.is_success() {
-                                    serde_json::from_slice(&body).map_err(|e| Error::JsonError(e))
-                                } else {
-                                    match serde_json::from_slice::<ApiError>(&body) {
-                                        Ok(e) => Err(Error::ApiError(e)),
-                                        Err(e) => Err(Error::JsonError(e)),
-                                    }
-                                };
+                    let res = if status.is_success() {
+                        serde_json::from_slice(&body).map_err(|e| Error::JsonError(e))
+                    } else {
+                        match serde_json::from_slice::<ApiError>(&body) {
+                            Ok(e) => Err(Error::ApiError(e)),
+                            Err(e) => Err(Error::JsonError(e)),
+                        }
+                    };
 
-                                let as_str = unsafe { ::std::str::from_utf8_unchecked(&body) };
-                                trace!("recv oneshot: {}", as_str);
+                    let as_str = unsafe { ::std::str::from_utf8_unchecked(&body) };
+                    trace!("recv oneshot: {}", as_str);
 
-                                tx.send(res.map(|res| (headers, res))).unwrap_or(())
-                            })
-                    })
-                    .map_err(|_| ())
-            });
+                    tx.send(res.map(|res| (headers, res))).unwrap_or(())
+                })
+            }).map_err(|_| ())
+        });
         rx.wait().unwrap()
     }
 }
 
 pub fn encode_query_params<'a, I>(i: I) -> String
-    where I: IntoIterator<Item = (&'a str, String)>
+where
+    I: IntoIterator<Item = (&'a str, String)>,
 {
     use url::percent_encoding::{utf8_percent_encode, QUERY_ENCODE_SET};
 
@@ -213,14 +209,16 @@ pub fn encode_query_params<'a, I>(i: I) -> String
 pub trait ApiClient {
     // submits a raw request using hyper
     fn request<D>(&self, hyper::Request<hyper::Body>) -> Result<(hyper::Headers, D)>
-        where for<'de> D: 'static + Send + Deserialize<'de>;
+    where
+        for<'de> D: 'static + Send + Deserialize<'de>;
 
     // fetches an access token for use in requests
     fn token(&self, &[String]) -> Result<auth::Token>;
 
     // helper method for making a GET request
     fn get<D>(&self, uri: &hyper::Uri, scopes: &[String]) -> Result<D>
-        where for<'de> D: 'static + Send + Deserialize<'de>
+    where
+        for<'de> D: 'static + Send + Deserialize<'de>,
     {
         let mut req = hyper::Request::new(hyper::Method::Get, uri.clone());
         req.headers_mut().set(self.token(scopes)?.into_header());
@@ -230,7 +228,8 @@ pub trait ApiClient {
 
     // helper method for making a POST request with a JSON body
     fn post<B: Serialize, D>(&self, uri: &hyper::Uri, body: B, scopes: &[String]) -> Result<D>
-        where for<'de> D: 'static + Send + Deserialize<'de>
+    where
+        for<'de> D: 'static + Send + Deserialize<'de>,
     {
         let mut req = hyper::Request::new(hyper::Method::Post, uri.clone());
         req.headers_mut().set(hyper::header::ContentType::json());

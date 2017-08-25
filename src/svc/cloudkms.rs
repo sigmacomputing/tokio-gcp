@@ -15,18 +15,18 @@ pub struct CryptoKey {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
-    #[serde(rename="nextRotationTime")]
+    #[serde(rename = "nextRotationTime")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_rotation_time: Option<String>,
 
-    #[serde(rename="rotationPeriod")]
+    #[serde(rename = "rotationPeriod")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rotation_period: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub primary: Option<CryptoKeyVersion>,
 
-    #[serde(rename="createTime")]
+    #[serde(rename = "createTime")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub create_time: Option<String>,
 
@@ -39,15 +39,15 @@ pub struct CryptoKeyVersion {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
 
-    #[serde(rename="destroyTime")]
+    #[serde(rename = "destroyTime")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destroy_time: Option<String>,
 
-    #[serde(rename="createTime")]
+    #[serde(rename = "createTime")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub create_time: Option<String>,
 
-    #[serde(rename="destroyEventTime")]
+    #[serde(rename = "destroyEventTime")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destroy_event_time: Option<String>,
 
@@ -60,7 +60,7 @@ pub struct EncryptRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plaintext: Option<String>,
 
-    #[serde(rename="additionalAuthenticatedData")]
+    #[serde(rename = "additionalAuthenticatedData")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_authenticated_data: Option<String>,
 }
@@ -79,7 +79,7 @@ pub struct DecryptRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ciphertext: Option<String>,
 
-    #[serde(rename="additionalAuthenticatedData")]
+    #[serde(rename = "additionalAuthenticatedData")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_authenticated_data: Option<String>,
 }
@@ -92,11 +92,13 @@ pub struct DecryptResponse {
 
 impl<'a> Hub<'a> {
     pub fn create_cryptokey(&self, keyring: &str, keyid: &str) -> client::Result<String> {
-        let path = format!("{}/projects/{}/locations/global/keyRings/{}/cryptoKeys?cryptoKeyId={}",
-                           CLOUDKMS_ROOT,
-                           self.project_id(),
-                           keyring,
-                           keyid);
+        let path = format!(
+            "{}/projects/{}/locations/global/keyRings/{}/cryptoKeys?cryptoKeyId={}",
+            CLOUDKMS_ROOT,
+            self.project_id(),
+            keyring,
+            keyid
+        );
 
         let req = CryptoKey {
             purpose: Some(String::from("ENCRYPT_DECRYPT")),
@@ -108,11 +110,12 @@ impl<'a> Hub<'a> {
         Ok(res.name.expect("name to be set"))
     }
 
-    pub fn encrypt(&self,
-                   cryptokey: &str,
-                   plaintext: &[u8],
-                   nonce: Option<&str>)
-                   -> client::Result<Vec<u8>> {
+    pub fn encrypt(
+        &self,
+        cryptokey: &str,
+        plaintext: &[u8],
+        nonce: Option<&str>,
+    ) -> client::Result<Vec<u8>> {
         let path = format!("{}/{}:encrypt", CLOUDKMS_ROOT, cryptokey);
 
         let req = EncryptRequest {
@@ -124,14 +127,17 @@ impl<'a> Hub<'a> {
         let res = self.post::<_, EncryptResponse>(&uri, req, &[])?;
 
         let ciphertext = res.ciphertext.expect("ciphertext to be set");
-        Ok(base64::decode(&ciphertext.as_bytes()).expect("ciphertext to be base64"))
+        Ok(base64::decode(&ciphertext.as_bytes()).expect(
+            "ciphertext to be base64",
+        ))
     }
 
-    pub fn decrypt(&self,
-                   cryptokey: &str,
-                   ciphertext: &[u8],
-                   nonce: Option<&str>)
-                   -> client::Result<Vec<u8>> {
+    pub fn decrypt(
+        &self,
+        cryptokey: &str,
+        ciphertext: &[u8],
+        nonce: Option<&str>,
+    ) -> client::Result<Vec<u8>> {
         let path = format!("{}/{}:decrypt", CLOUDKMS_ROOT, cryptokey);
 
         let req = DecryptRequest {
@@ -143,6 +149,8 @@ impl<'a> Hub<'a> {
         let res = self.post::<_, DecryptResponse>(&uri, req, &[])?;
 
         let plaintext = res.plaintext.expect("plaintext to be set");
-        Ok(base64::decode(&plaintext.as_bytes()).expect("plaintext to be base64"))
+        Ok(base64::decode(&plaintext.as_bytes()).expect(
+            "plaintext to be base64",
+        ))
     }
 }

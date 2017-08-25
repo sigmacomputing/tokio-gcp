@@ -18,18 +18,21 @@ lazy_static! {
 }
 
 impl<'a> Hub<'a> {
-    pub fn get_data<D>(&self,
-                       firebase_project_id: &str,
-                       path: &str,
-                       opts: GetOptions)
-                       -> client::Result<D>
-        where for<'de> D: 'static + Send + Deserialize<'de>
+    pub fn get_data<D>(
+        &self,
+        firebase_project_id: &str,
+        path: &str,
+        opts: GetOptions,
+    ) -> client::Result<D>
+    where
+        for<'de> D: 'static + Send + Deserialize<'de>,
     {
-        let uri = Uri::from_str(&format!("https://{}.firebaseio.com/{}.json?shallow={}",
-                                         firebase_project_id,
-                                         path,
-                                         opts.shallow))
-                .expect("uri is valid");
+        let uri = Uri::from_str(&format!(
+            "https://{}.firebaseio.com/{}.json?shallow={}",
+            firebase_project_id,
+            path,
+            opts.shallow
+        )).expect("uri is valid");
         self.get(&uri, &*DATABASE_SCOPES)
     }
 }
