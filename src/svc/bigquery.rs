@@ -39,30 +39,25 @@ impl ListDatasetsRequest {
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ListDatasetsResponse {
-    #[serde(rename = "nextPageToken")]
     pub next_page_token: Option<String>,
 
     pub datasets: Vec<DatasetMeta>,
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DatasetMeta {
     pub id: String,
-
-    #[serde(rename = "datasetReference")]
     pub dataset_reference: DatasetReference,
-
-    #[serde(rename = "friendlyName")]
     pub friendly_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DatasetReference {
-    #[serde(rename = "projectId")]
     pub project_id: String,
-
-    #[serde(rename = "datasetId")]
     pub dataset_id: String,
 }
 
@@ -86,65 +81,90 @@ impl ListTablesRequest {
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ListTablesResponse {
-    #[serde(rename = "nextPageToken")]
     pub next_page_token: Option<String>,
-
     pub tables: Vec<TableMeta>,
-
-    #[serde(rename = "totalItems")]
     pub total_items: usize,
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TableMeta {
     pub id: String,
-
-    #[serde(rename = "tableReference")]
     pub table_reference: TableReference,
-
-    #[serde(rename = "friendlyName")]
     pub friendly_name: Option<String>,
+    pub view: Option<ViewMeta>,
 
     #[serde(rename = "type")]
     pub type0: String,
 }
 
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewMeta {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+
+    #[serde(default = "default_view_use_legacy_sql")]
+    pub use_legacy_sql: bool,
+}
+
+fn default_view_use_legacy_sql() -> bool {
+    true
+}
+
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TableReference {
-    #[serde(rename = "projectId")]
     pub project_id: String,
-
-    #[serde(rename = "datasetId")]
     pub dataset_id: String,
-
-    #[serde(rename = "tableId")]
     pub table_id: String,
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DescribeTableResponse {
     pub id: String,
-    pub schema: TableFieldSchema,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schema: Option<TableFieldSchema>,
 
     #[serde(rename = "type")]
     pub type0: String,
 
-    #[serde(rename = "tableReference")]
     pub table_reference: TableReference,
 
-    #[serde(rename = "friendlyName")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub friendly_name: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_data_configuration: Option<ExtDataConfig>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub view: Option<ViewMeta>,
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtDataConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schema: Option<TableFieldSchema>,
+}
+
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TableFieldSchema {
     pub fields: Vec<TableField>,
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TableField {
     pub name: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default = "default_table_field_mode")]
     pub mode: String,
 
     #[serde(rename = "type")]
@@ -152,6 +172,10 @@ pub struct TableField {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fields: Option<Vec<TableField>>,
+}
+
+fn default_table_field_mode() -> String {
+    "NULLABLE".into()
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -258,23 +282,14 @@ impl GetQueryResultsRequest {
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct GetQueryResultsResponse {
     pub schema: Option<TableFieldSchema>,
-
-    #[serde(rename = "jobReference")]
     pub job_reference: Option<JobReference>,
-
-    #[serde(rename = "totalRows")]
     pub total_rows: Option<String>,
-
     pub rows: Option<Vec<TableRow>>,
-
-    #[serde(rename = "jobComplete")]
     pub job_complete: bool,
-
-    #[serde(rename = "pageToken")]
     pub page_token: Option<String>,
-
     pub errors: Option<Vec<QueryError>>,
 }
 
