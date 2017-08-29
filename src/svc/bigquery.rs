@@ -84,7 +84,7 @@ impl ListTablesRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ListTablesResponse {
     pub next_page_token: Option<String>,
-    pub tables: Vec<TableMeta>,
+    pub tables: Option<Vec<TableMeta>>,
     pub total_items: usize,
 }
 
