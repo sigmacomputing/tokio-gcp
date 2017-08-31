@@ -1,5 +1,6 @@
 extern crate base64;
 extern crate chrono;
+extern crate flate2;
 extern crate futures;
 #[macro_use]
 extern crate hyper;
