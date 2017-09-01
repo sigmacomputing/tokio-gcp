@@ -1,8 +1,10 @@
 use std::{io, fmt, thread, time};
+use std::io::Read;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
+use flate2::read::GzDecoder;
 use hyper;
 use hyper_tls;
 use futures::{future, Future, Stream};
@@ -33,6 +35,7 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 pub enum Error {
     ApiError(ApiError),
     OpenSslError(openssl::error::ErrorStack),
+    GzipError(::std::io::Error),
     HyperError(hyper::Error),
     JsonError(serde_json::Error),
     Unauthorized, // a generic "unauthorized" error
@@ -42,6 +45,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
         match *self {
             Error::ApiError(ref e) => write!(f, "ApiError {:?}", e),
+            Error::GzipError(ref e) => write!(f, "GzipError {:?}", e),
             Error::HyperError(ref e) => write!(f, "HyperError {:?}", e),
             Error::JsonError(ref e) => write!(f, "JsonError {:?}", e),
             Error::OpenSslError(ref e) => write!(f, "OpenSslError {:?}", e),
@@ -145,11 +149,20 @@ impl<'a, S> ApiClient for Hub<'a, S> {
     }
     fn request<D: 'static + Send>(
         &self,
-        r: hyper::Request<hyper::Body>,
+        mut r: hyper::Request<hyper::Body>,
     ) -> Result<(hyper::Headers, D)>
     where
         for<'de> D: 'static + Send + Deserialize<'de>,
     {
+        use hyper::header::{AcceptEncoding, ContentEncoding, Encoding, UserAgent, qitem};
+        // https://cloud.google.com/bigquery/docs/api-performance
+        r.headers_mut().set(
+            AcceptEncoding(vec![qitem(Encoding::Gzip)]),
+        );
+        r.headers_mut().set(UserAgent::new(
+            "Sigma Computing, Inc. (gzip)",
+        ));
+
         trace!("send request: {:?}", r);
         let (tx, rx) = oneshot::channel();
 
@@ -160,28 +173,46 @@ impl<'a, S> ApiClient for Hub<'a, S> {
                 let status = res.status();
                 let headers = res.headers().clone();
 
-                res.body().collect().map(move |chunks| {
-                    trace!("fold chunks: {:?}", chunks);
+                res.body()
+                    .collect()
+                    .map(move |chunks| {
+                        trace!("fold chunks: {:?}", chunks);
 
-                    let body = chunks.into_iter().fold(vec![], |mut acc, chunk| {
-                        acc.extend_from_slice(&*chunk);
-                        acc
-                    });
+                        let body = chunks.into_iter().fold(vec![], |mut acc, chunk| {
+                            acc.extend_from_slice(&*chunk);
+                            acc
+                        });
+                        let body = match headers.get::<ContentEncoding>() {
+                            Some(&ContentEncoding(ref encs)) if encs.contains(&Encoding::Gzip) => {
+                                let mut unzipped = vec![];
+                                GzDecoder::new(body.as_slice())
+                                    .map_err(Error::GzipError)?
+                                    .read_to_end(&mut unzipped)
+                                    .map_err(Error::GzipError)?;
+                                unzipped
+                            }
+                            _ => body,
+                        };
 
-                    let res = if status.is_success() {
-                        serde_json::from_slice(&body).map_err(|e| Error::JsonError(e))
-                    } else {
-                        match serde_json::from_slice::<ApiError>(&body) {
-                            Ok(e) => Err(Error::ApiError(e)),
-                            Err(e) => Err(Error::JsonError(e)),
+                        let as_str = unsafe { ::std::str::from_utf8_unchecked(&body) };
+                        trace!("recv oneshot: {}", as_str);
+
+                        if status.is_success() {
+                            match serde_json::from_slice(&body) {
+                                Ok(res) => Ok((headers, res)),
+                                Err(e) => Err(Error::JsonError(e)),
+                            }
+                        } else {
+                            match serde_json::from_slice::<ApiError>(&body) {
+                                Ok(e) => Err(Error::ApiError(e)),
+                                Err(e) => Err(Error::JsonError(e)),
+                            }
                         }
-                    };
-
-                    let as_str = unsafe { ::std::str::from_utf8_unchecked(&body) };
-                    trace!("recv oneshot: {}", as_str);
-
-                    tx.send(res.map(|res| (headers, res))).unwrap_or(())
-                })
+                    })
+                    .map(|res| {
+                        tx.send(res.map(|(headers, res)| (headers, res)))
+                            .unwrap_or(())
+                    })
             }).map_err(|_| ())
         });
         rx.wait().unwrap()
