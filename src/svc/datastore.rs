@@ -218,24 +218,28 @@ impl<'a> Hub<'a> {
         &self,
         kind: &str,
         ns: &str,
+        ancestors: Vec<PathElement>,
         props: ValueMap,
     ) -> client::Result<String> {
-        let key = self.mk_key(kind, Some(ns), None, None);
+        let key = self.mk_key(kind, Some(ns), ancestors, None, None);
         let res = self.insert(key, props)?;
         let mut results = res.mutation_results.expect("mutations to be valid");
 
         let mut key = results.remove(0).key.expect("key to be valid");
-        Ok(key.path.remove(0).id.expect("id to be valid"))
+        Ok(key.path.pop().expect("path to be non-empty").id.expect(
+            "id to be valid",
+        ))
     }
 
     pub fn insert_entity_by_name(
         &self,
         kind: &str,
         ns: &str,
+        ancestors: Vec<PathElement>,
         name: &str,
         props: ValueMap,
     ) -> client::Result<()> {
-        let key = self.mk_key(kind, Some(ns), Some(name), None);
+        let key = self.mk_key(kind, Some(ns), ancestors, Some(name), None);
         self.insert(key, props)?;
         Ok(())
     }
@@ -260,8 +264,14 @@ impl<'a> Hub<'a> {
         self.commit(&txn_id, req)
     }
 
-    pub fn lookup_by_id(&self, kind: &str, ns: &str, id: &str) -> client::Result<Option<ValueMap>> {
-        let key = self.mk_key(kind, Some(ns), None, Some(id));
+    pub fn lookup_by_id(
+        &self,
+        kind: &str,
+        ns: &str,
+        ancestors: Vec<PathElement>,
+        id: &str,
+    ) -> client::Result<Option<ValueMap>> {
+        let key = self.mk_key(kind, Some(ns), ancestors, None, Some(id));
         self.lookup_one(key)
     }
 
@@ -269,9 +279,10 @@ impl<'a> Hub<'a> {
         &self,
         kind: &str,
         ns: &str,
+        ancestors: Vec<PathElement>,
         name: &str,
     ) -> client::Result<Option<ValueMap>> {
-        let key = self.mk_key(kind, Some(ns), Some(name), None);
+        let key = self.mk_key(kind, Some(ns), ancestors, Some(name), None);
         self.lookup_one(key)
     }
 
@@ -301,10 +312,11 @@ impl<'a> Hub<'a> {
         &self,
         kind: &str,
         ns: &str,
+        ancestors: Vec<PathElement>,
         id: &str,
         props: ValueMap,
     ) -> client::Result<()> {
-        let key = self.mk_key(kind, Some(ns), None, Some(id));
+        let key = self.mk_key(kind, Some(ns), ancestors, None, Some(id));
 
         let entity = Entity {
             key: Some(key),
@@ -327,8 +339,14 @@ impl<'a> Hub<'a> {
         Ok(())
     }
 
-    pub fn delete_by_id(&self, kind: &str, ns: &str, id: &str) -> client::Result<()> {
-        let key = self.mk_key(kind, Some(ns), None, Some(id));
+    pub fn delete_by_id(
+        &self,
+        kind: &str,
+        ns: &str,
+        ancestors: Vec<PathElement>,
+        id: &str,
+    ) -> client::Result<()> {
+        let key = self.mk_key(kind, Some(ns), ancestors, None, Some(id));
 
         let delete = Mutation {
             delete: Some(key),
@@ -369,20 +387,27 @@ impl<'a> Hub<'a> {
         Uri::from_str(&path).expect("uri to be valid")
     }
 
-    fn mk_key(&self, kind: &str, ns: Option<&str>, name: Option<&str>, id: Option<&str>) -> Key {
+    fn mk_key(
+        &self,
+        kind: &str,
+        ns: Option<&str>,
+        mut path: Vec<PathElement>,
+        name: Option<&str>,
+        id: Option<&str>,
+    ) -> Key {
         let partition_id = PartitionId {
             project_id: self.project_id().to_string(),
             namespace_id: ns.map(|ns| ns.to_string()),
         };
 
-        let path = PathElement {
+        path.push(PathElement {
             kind: kind.to_string(),
             name: name.map(|name| name.to_string()),
             id: id.map(|id| id.to_string()),
-        };
+        });
 
         Key {
-            path: vec![path],
+            path: path,
             partition_id: Some(partition_id),
         }
     }
