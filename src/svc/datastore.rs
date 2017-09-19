@@ -71,13 +71,13 @@ struct GqlQueryParameter {
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RunQueryResponse {
-    batch: QueryResultBatch,
+    pub batch: QueryResultBatch,
 }
 
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryResultBatch {
-    entity_results: Option<Vec<EntityResult>>,
+    pub entity_results: Option<Vec<EntityResult>>,
 }
 
 #[derive(Serialize, Default, Debug)]
