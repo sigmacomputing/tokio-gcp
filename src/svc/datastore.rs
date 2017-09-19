@@ -13,14 +13,17 @@ pub type Hub<'a> = client::Hub<'a, DatastoreService>;
 pub type ValueMap = HashMap<String, Value>;
 
 #[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct BeginTransactionRequest {}
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct BeginTransactionResponse {
     pub transaction: String,
 }
 
 #[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CommitRequest {
     pub transaction: String,
 
@@ -32,17 +35,53 @@ pub struct CommitRequest {
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CommitResponse {
-    #[serde(rename = "mutationResults")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mutation_results: Option<Vec<MutationResult>>,
 
-    #[serde(rename = "indexUpdates")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index_updates: Option<i32>,
 }
 
 #[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+struct RunQueryRequest {
+    partition_id: PartitionId,
+    read_options: ReadOptions,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    gql_query: Option<GqlQuery>,
+}
+
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+struct GqlQuery {
+    query_string: String,
+    allow_literals: bool,
+    named_bindings: HashMap<String, GqlQueryParameter>,
+}
+
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+struct GqlQueryParameter {
+    value: Value,
+}
+
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RunQueryResponse {
+    pub batch: QueryResultBatch,
+}
+
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryResultBatch {
+    pub entity_results: Option<Vec<EntityResult>>,
+}
+
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Mutation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub insert: Option<Entity>,
@@ -53,7 +92,6 @@ pub struct Mutation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub update: Option<Entity>,
 
-    #[serde(rename = "baseVersion")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_version: Option<String>,
 
@@ -62,11 +100,11 @@ pub struct Mutation {
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct MutationResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 
-    #[serde(rename = "conflictDetected")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conflict_detected: Option<bool>,
 
@@ -75,16 +113,17 @@ pub struct MutationResult {
 }
 
 #[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct LookupRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keys: Option<Vec<Key>>,
 
-    #[serde(rename = "readOptions")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_options: Option<ReadOptions>,
 }
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct LookupResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub found: Option<Vec<EntityResult>>,
@@ -97,17 +136,18 @@ pub struct LookupResponse {
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ReadOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction: Option<String>,
 
-    #[serde(rename = "readConsistency")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_consistency: Option<String>,
 }
 
 
 #[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct EntityResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
@@ -120,6 +160,7 @@ pub struct EntityResult {
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Entity {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Value>>,
@@ -129,15 +170,16 @@ pub struct Entity {
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Key {
     pub path: Vec<PathElement>,
 
-    #[serde(rename = "partitionId")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub partition_id: Option<PartitionId>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct PathElement {
     pub kind: String,
 
@@ -149,57 +191,47 @@ pub struct PathElement {
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct PartitionId {
-    #[serde(rename = "projectId")]
     pub project_id: String,
 
-    #[serde(rename = "namespaceId")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub namespace_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Value {
-    #[serde(rename = "entityValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entity_value: Option<Entity>,
 
-    #[serde(rename = "timestampValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp_value: Option<String>,
 
-    #[serde(rename = "stringValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub string_value: Option<String>,
 
-    #[serde(rename = "doubleValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub double_value: Option<f64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub meaning: Option<i32>,
 
-    #[serde(rename = "excludeFromIndexes")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude_from_indexes: Option<bool>,
 
-    #[serde(rename = "blobValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blob_value: Option<String>,
 
-    #[serde(rename = "keyValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key_value: Option<Key>,
 
-    #[serde(rename = "booleanValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub boolean_value: Option<bool>,
 
-    #[serde(rename = "integerValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub integer_value: Option<String>,
+    pub integer_value: Option<i64>,
 
-    #[serde(rename = "nullValue")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub null_value: Option<String>,
 
@@ -214,6 +246,27 @@ pub struct Value {
 
 
 impl<'a> Hub<'a> {
+    //
+    // api-level operations
+
+    pub fn begin_transaction(&self) -> client::Result<String> {
+        let uri = self.mk_uri("beginTransaction");
+        let req = BeginTransactionRequest::default();
+        self.post::<_, BeginTransactionResponse>(&uri, req, &[])
+            .map(|r| r.transaction)
+    }
+
+    pub fn commit(&self, req: CommitRequest) -> client::Result<CommitResponse> {
+        debug_assert!(!req.transaction.is_empty());
+        let uri = self.mk_uri("commit");
+        self.post(&uri, req, &[])
+    }
+
+
+
+    //
+    // high-level operations
+
     pub fn insert_entity_auto_id(
         &self,
         kind: &str,
@@ -256,12 +309,12 @@ impl<'a> Hub<'a> {
         };
 
         let req = CommitRequest {
+            transaction: self.begin_transaction()?,
             mutations: Some(vec![insert]),
             ..Default::default()
         };
 
-        let txn_id = self.begin_transaction()?;
-        self.commit(&txn_id, req)
+        self.commit(req)
     }
 
     pub fn lookup_by_id(
@@ -284,6 +337,32 @@ impl<'a> Hub<'a> {
     ) -> client::Result<Option<ValueMap>> {
         let key = self.mk_key(kind, Some(ns), ancestors, Some(name), None);
         self.lookup_one(key)
+    }
+
+    pub fn gql<B>(&self, ns: &str, q: &str, bindings: B) -> client::Result<RunQueryResponse>
+    where
+        B: IntoIterator<Item = (String, Value)>,
+    {
+        let query = GqlQuery {
+            query_string: q.to_string(),
+            allow_literals: false,
+            named_bindings: bindings
+                .into_iter()
+                .map(|(k, v)| (k, GqlQueryParameter { value: v }))
+                .collect(),
+        };
+
+        let req = RunQueryRequest {
+            partition_id: PartitionId {
+                project_id: self.project_id().to_string(),
+                namespace_id: Some(ns.to_string()),
+            },
+            read_options: ReadOptions { ..Default::default() },
+            gql_query: Some(query),
+        };
+
+        let uri = self.mk_uri("runQuery");
+        self.post::<_, RunQueryResponse>(&uri, req, &[])
     }
 
     // Lookup a key using default read options:
@@ -329,14 +408,12 @@ impl<'a> Hub<'a> {
         };
 
         let req = CommitRequest {
+            transaction: self.begin_transaction()?,
             mutations: Some(vec![update]),
             ..Default::default()
         };
 
-        let txn_id = self.begin_transaction()?;
-        self.commit(&txn_id, req)?;
-
-        Ok(())
+        self.commit(req).map(|_| ())
     }
 
     pub fn delete_by_id(
@@ -354,27 +431,12 @@ impl<'a> Hub<'a> {
         };
 
         let req = CommitRequest {
+            transaction: self.begin_transaction()?,
             mutations: Some(vec![delete]),
             ..Default::default()
         };
 
-        let txn_id = self.begin_transaction()?;
-        self.commit(&txn_id, req)?;
-
-        Ok(())
-    }
-
-    fn begin_transaction(&self) -> client::Result<String> {
-        let uri = self.mk_uri("beginTransaction");
-        let req = BeginTransactionRequest::default();
-        self.post::<_, BeginTransactionResponse>(&uri, req, &[])
-            .map(|r| r.transaction)
-    }
-
-    fn commit(&self, txn_id: &str, mut req: CommitRequest) -> client::Result<CommitResponse> {
-        req.transaction = txn_id.to_string();
-        let uri = self.mk_uri("commit");
-        self.post(&uri, req, &[])
+        self.commit(req).map(|_| ())
     }
 
     fn mk_uri(&self, action: &str) -> Uri {
