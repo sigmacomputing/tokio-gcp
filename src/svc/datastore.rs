@@ -246,6 +246,27 @@ pub struct Value {
 
 
 impl<'a> Hub<'a> {
+    //
+    // api-level operations
+
+    pub fn begin_transaction(&self) -> client::Result<String> {
+        let uri = self.mk_uri("beginTransaction");
+        let req = BeginTransactionRequest::default();
+        self.post::<_, BeginTransactionResponse>(&uri, req, &[])
+            .map(|r| r.transaction)
+    }
+
+    pub fn commit(&self, req: CommitRequest) -> client::Result<CommitResponse> {
+        debug_assert!(!req.transaction.is_empty());
+        let uri = self.mk_uri("commit");
+        self.post(&uri, req, &[])
+    }
+
+
+
+    //
+    // high-level operations
+
     pub fn insert_entity_auto_id(
         &self,
         kind: &str,
@@ -288,12 +309,12 @@ impl<'a> Hub<'a> {
         };
 
         let req = CommitRequest {
+            transaction: self.begin_transaction()?,
             mutations: Some(vec![insert]),
             ..Default::default()
         };
 
-        let txn_id = self.begin_transaction()?;
-        self.commit(&txn_id, req)
+        self.commit(req)
     }
 
     pub fn lookup_by_id(
@@ -387,14 +408,12 @@ impl<'a> Hub<'a> {
         };
 
         let req = CommitRequest {
+            transaction: self.begin_transaction()?,
             mutations: Some(vec![update]),
             ..Default::default()
         };
 
-        let txn_id = self.begin_transaction()?;
-        self.commit(&txn_id, req)?;
-
-        Ok(())
+        self.commit(req).map(|_| ())
     }
 
     pub fn delete_by_id(
@@ -412,27 +431,12 @@ impl<'a> Hub<'a> {
         };
 
         let req = CommitRequest {
+            transaction: self.begin_transaction()?,
             mutations: Some(vec![delete]),
             ..Default::default()
         };
 
-        let txn_id = self.begin_transaction()?;
-        self.commit(&txn_id, req)?;
-
-        Ok(())
-    }
-
-    fn begin_transaction(&self) -> client::Result<String> {
-        let uri = self.mk_uri("beginTransaction");
-        let req = BeginTransactionRequest::default();
-        self.post::<_, BeginTransactionResponse>(&uri, req, &[])
-            .map(|r| r.transaction)
-    }
-
-    fn commit(&self, txn_id: &str, mut req: CommitRequest) -> client::Result<CommitResponse> {
-        req.transaction = txn_id.to_string();
-        let uri = self.mk_uri("commit");
-        self.post(&uri, req, &[])
+        self.commit(req).map(|_| ())
     }
 
     fn mk_uri(&self, action: &str) -> Uri {
