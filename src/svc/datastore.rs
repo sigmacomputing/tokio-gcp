@@ -24,6 +24,16 @@ pub struct BeginTransactionResponse {
 
 #[derive(Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct RollbackTransactionRequest {
+    pub transaction: String,
+}
+
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RollbackTransactionResponse {}
+
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CommitRequest {
     pub transaction: String,
 
@@ -254,6 +264,13 @@ impl<'a> Hub<'a> {
         let req = BeginTransactionRequest::default();
         self.post::<_, BeginTransactionResponse>(&uri, req, &[])
             .map(|r| r.transaction)
+    }
+
+    pub fn rollback(&self, txn: &str) -> client::Result<()> {
+        let uri = self.mk_uri("rollback");
+        let req = RollbackTransactionRequest { transaction: txn.to_string() };
+        self.post::<_, RollbackTransactionResponse>(&uri, req, &[])
+            .map(|_| ())
     }
 
     pub fn commit(&self, req: CommitRequest) -> client::Result<CommitResponse> {
