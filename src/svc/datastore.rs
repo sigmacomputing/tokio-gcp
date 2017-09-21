@@ -323,9 +323,10 @@ impl<'a> Hub<'a> {
         ns: &str,
         ancestors: Vec<PathElement>,
         id: &str,
+        txn: Option<&str>,
     ) -> client::Result<Option<ValueMap>> {
         let key = self.mk_key(kind, Some(ns), ancestors, None, Some(id));
-        self.lookup_one(key)
+        self.lookup_one(key, txn)
     }
 
     pub fn lookup_by_name(
@@ -334,9 +335,10 @@ impl<'a> Hub<'a> {
         ns: &str,
         ancestors: Vec<PathElement>,
         name: &str,
+        txn: Option<&str>,
     ) -> client::Result<Option<ValueMap>> {
         let key = self.mk_key(kind, Some(ns), ancestors, Some(name), None);
-        self.lookup_one(key)
+        self.lookup_one(key, txn)
     }
 
     pub fn gql<B>(
@@ -376,10 +378,13 @@ impl<'a> Hub<'a> {
 
     // Lookup a key using default read options:
     // https://cloud.google.com/datastore/docs/reference/rest/v1/ReadOptions
-    fn lookup_one(&self, key: Key) -> client::Result<Option<ValueMap>> {
+    fn lookup_one(&self, key: Key, txn: Option<&str>) -> client::Result<Option<ValueMap>> {
         let req = LookupRequest {
             keys: Some(vec![key]),
-            read_options: None,
+            read_options: Some(ReadOptions {
+                transaction: txn.map(|t| t.to_string()),
+                ..Default::default()
+            }),
         };
 
         let uri = self.mk_uri("lookup");
