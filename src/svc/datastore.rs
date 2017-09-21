@@ -339,7 +339,13 @@ impl<'a> Hub<'a> {
         self.lookup_one(key)
     }
 
-    pub fn gql<B>(&self, ns: &str, q: &str, bindings: B) -> client::Result<RunQueryResponse>
+    pub fn gql<B>(
+        &self,
+        ns: &str,
+        q: &str,
+        txn: Option<&str>,
+        bindings: B,
+    ) -> client::Result<RunQueryResponse>
     where
         B: IntoIterator<Item = (String, Value)>,
     {
@@ -357,7 +363,10 @@ impl<'a> Hub<'a> {
                 project_id: self.project_id().to_string(),
                 namespace_id: Some(ns.to_string()),
             },
-            read_options: ReadOptions { ..Default::default() },
+            read_options: ReadOptions {
+                transaction: txn.map(|t| t.to_string()),
+                ..Default::default()
+            },
             gql_query: Some(query),
         };
 
