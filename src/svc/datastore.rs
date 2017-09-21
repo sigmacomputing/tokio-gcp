@@ -34,6 +34,18 @@ pub struct RollbackTransactionResponse {}
 
 #[derive(Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct AllocateIdsRequest {
+    keys: Vec<Key>,
+}
+
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AllocateIdsResponse {
+    keys: Vec<Key>,
+}
+
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CommitRequest {
     pub transaction: String,
 
@@ -279,6 +291,15 @@ impl<'a> Hub<'a> {
         self.post(&uri, req, &[])
     }
 
+    pub fn allocate_ids(&self, keys: Vec<Key>) -> client::Result<Vec<Key>> {
+        let uri = self.mk_uri("allocateIds");
+        let req = AllocateIdsRequest { keys: keys };
+        self.post::<_, AllocateIdsResponse>(&uri, req, &[]).map(
+            |r| {
+                r.keys
+            },
+        )
+    }
 
 
     //
