@@ -255,7 +255,7 @@ pub struct Value {
     pub integer_value: Option<i64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub null_value: Option<String>,
+    pub null_value: Option<()>,
 
     //#[serde(rename="geoPointValue")]
     //#[serde(skip_serializing_if = "Option::is_none")]
