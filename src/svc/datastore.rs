@@ -12,39 +12,39 @@ pub type Hub<'a> = client::Hub<'a, DatastoreService>;
 
 pub type ValueMap = HashMap<String, Value>;
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BeginTransactionRequest {}
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BeginTransactionResponse {
     pub transaction: String,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RollbackTransactionRequest {
     pub transaction: String,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RollbackTransactionResponse {}
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AllocateIdsRequest {
     keys: Vec<Key>,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AllocateIdsResponse {
     keys: Vec<Key>,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitRequest {
     pub transaction: String,
@@ -56,7 +56,7 @@ pub struct CommitRequest {
     pub mutations: Option<Vec<Mutation>>,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -66,7 +66,7 @@ pub struct CommitResponse {
     pub index_updates: Option<i32>,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 struct RunQueryRequest {
     partition_id: PartitionId,
@@ -76,7 +76,7 @@ struct RunQueryRequest {
     gql_query: Option<GqlQuery>,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 struct GqlQuery {
     query_string: String,
@@ -84,25 +84,25 @@ struct GqlQuery {
     named_bindings: HashMap<String, GqlQueryParameter>,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 struct GqlQueryParameter {
     value: Value,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RunQueryResponse {
     pub batch: QueryResultBatch,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryResultBatch {
     pub entity_results: Option<Vec<EntityResult>>,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Mutation {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -121,7 +121,7 @@ pub struct Mutation {
     pub delete: Option<Key>,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct MutationResult {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -134,7 +134,7 @@ pub struct MutationResult {
     pub key: Option<Key>,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Clone, Serialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct LookupRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -144,7 +144,7 @@ pub struct LookupRequest {
     pub read_options: Option<ReadOptions>,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct LookupResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,7 +157,7 @@ pub struct LookupResponse {
     pub deferred: Option<Vec<Key>>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ReadOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -168,7 +168,7 @@ pub struct ReadOptions {
 }
 
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Clone, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityResult {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -181,7 +181,7 @@ pub struct EntityResult {
     pub entity: Option<Entity>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Entity {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -191,7 +191,7 @@ pub struct Entity {
     pub key: Option<Key>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Key {
     pub path: Vec<PathElement>,
@@ -200,7 +200,7 @@ pub struct Key {
     pub partition_id: Option<PartitionId>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PathElement {
     pub kind: String,
@@ -212,7 +212,7 @@ pub struct PathElement {
     pub name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PartitionId {
     pub project_id: String,
@@ -221,7 +221,7 @@ pub struct PartitionId {
     pub namespace_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Value {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -255,7 +255,7 @@ pub struct Value {
     pub integer_value: Option<i64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub null_value: Option<String>,
+    pub null_value: Option<()>,
 
     //#[serde(rename="geoPointValue")]
     //#[serde(skip_serializing_if = "Option::is_none")]
