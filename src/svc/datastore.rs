@@ -416,7 +416,7 @@ impl<'a> Hub<'a> {
 
     // Lookup a key using default read options:
     // https://cloud.google.com/datastore/docs/reference/rest/v1/ReadOptions
-    fn lookup_one(&self, key: Key, txn: Option<&str>) -> client::Result<Option<ValueMap>> {
+    pub fn lookup_one(&self, key: Key, txn: Option<&str>) -> client::Result<Option<ValueMap>> {
         let req = LookupRequest {
             keys: Some(vec![key]),
             read_options: Some(ReadOptions {
