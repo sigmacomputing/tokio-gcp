@@ -11,7 +11,7 @@ flate2 = "0.2"
 hyper = "0.11"
 hyper-tls = "0.1"
 futures = "0.1"
-jsonwebtoken = { git = "https://github.com/mhseiden/jsonwebtoken.git", rev = "05041bb" }
+jsonwebtoken = "3.0"
 lazy_static = "0.2"
 log = "0.3"
 openssl = "0.9"
