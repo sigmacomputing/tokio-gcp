@@ -366,18 +366,9 @@ impl ServiceAccountAuth {
 }
 
 fn get_jwt_kid(token: &str) -> client::Result<String> {
-    #[derive(Deserialize)]
-    struct Empty {};
-
-    let mut info = jwt::decode::<Empty>(
-        token,
-        &[],
-        &jwt::Validation {
-            validate_signature: false,
-            validate_exp: false,
-            ..Default::default()
-        },
-    ).map_err(|_| client::Error::Unauthorized)?;
-
-    info.header.kid.take().ok_or(client::Error::Unauthorized)
+    jwt::decode_header(token)
+        .map_err(|_| client::Error::Unauthorized)?
+        .kid
+        .take()
+        .ok_or(client::Error::Unauthorized)
 }
