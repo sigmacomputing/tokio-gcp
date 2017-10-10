@@ -13,8 +13,10 @@ pub struct GetOptions {
 }
 
 lazy_static! {
-    static ref DATABASE_SCOPES: Vec<String> = vec!["https://www.googleapis.com/auth/firebase.database".into(),
-                       "https://www.googleapis.com/auth/userinfo.email".into()];
+    static ref DATABASE_SCOPES: Vec<String> = vec![
+        "https://www.googleapis.com/auth/firebase.database".into(),
+        "https://www.googleapis.com/auth/userinfo.email".into()
+    ];
 }
 
 impl<'a> Hub<'a> {

@@ -9,10 +9,15 @@ use openssl::x509::X509;
 
 use client::{self, ApiClient};
 
-// https://developers.google.com/identity/sign-in/web/backend-auth#verify-the-integrity-of-the-id-token
+// https://developers.google.com/identity/sign-in/web/backend-auth
+// #verify-the-integrity-of-the-id-token
 const GOOGLE_CERT_PEM_API: &str = "https://www.googleapis.com/oauth2/v1/certs";
-// https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
-const FIREBASE_CERT_PEM_API: &str = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
+// https://firebase.google.com/docs/auth/admin/verify-id-tokens
+// #verify_id_tokens_using_a_third-party_jwt_library
+const FIREBASE_CERT_PEM_API: &str = concat!(
+    "https://www.googleapis.com",
+    "/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+);
 
 #[derive(Debug, Clone)]
 pub struct PubKey(Arc<Box<[u8]>>);
