@@ -139,6 +139,9 @@ pub struct DescribeTableResponse {
     pub friendly_name: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_partitioning: Option<TimePartitioning>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub external_data_configuration: Option<ExtDataConfig>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -156,6 +159,20 @@ pub struct ExtDataConfig {
 #[serde(rename_all = "camelCase")]
 pub struct TableFieldSchema {
     pub fields: Vec<TableField>,
+}
+
+#[derive(Deserialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TimePartitioning {
+    #[serde(rename = "type")]
+    // Always "DAY"
+    pub type0: String,
+    // Partitions older than this will be deleted automatically
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expiration_ms: Option<i64>,
+    // If unset, the table is partitioned by the pseudo column "_PARTITIONTIME"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<String>,
 }
 
 #[derive(Deserialize, Default, Debug)]
