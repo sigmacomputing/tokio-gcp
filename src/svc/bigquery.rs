@@ -10,6 +10,8 @@ use client::{self, ApiClient};
 use svc::common;
 
 static BIGQUERY_ROOT: &str = "https://www.googleapis.com/bigquery/v2/projects";
+// https://developers.google.com/identity/protocols/googlescopes#bigqueryv2
+static BIGQUERY_OAUTH_READONLY_SCOPE: &str = "https://www.googleapis.com/auth/bigquery";
 
 pub struct BigQueryService {}
 pub type Hub<'a> = client::Hub<'a, BigQueryService>;
@@ -320,7 +322,7 @@ impl Default for Cell {
 impl<'a> Hub<'a> {
     pub fn list_datasets(
         &self,
-        token: &str,
+        maybe_token: Option<String>,
         project_id: &str,
         req: &ListDatasetsRequest,
     ) -> client::Result<ListDatasetsResponse> {
@@ -332,12 +334,12 @@ impl<'a> Hub<'a> {
         );
 
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.get_bq::<ListDatasetsResponse>(&uri, token.to_string())
+        self.get_bq::<ListDatasetsResponse>(&uri, maybe_token)
     }
 
     pub fn list_tables(
         &self,
-        token: &str,
+        maybe_token: Option<String>,
         project_id: &str,
         dataset_id: &str,
         req: &ListTablesRequest,
@@ -350,12 +352,12 @@ impl<'a> Hub<'a> {
             req.to_query()
         );
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.get_bq::<ListTablesResponse>(&uri, token.to_string())
+        self.get_bq::<ListTablesResponse>(&uri, maybe_token)
     }
 
     pub fn describe_table(
         &self,
-        token: &str,
+        maybe_token: Option<String>,
         project_id: &str,
         dataset_id: &str,
         table_id: &str,
@@ -368,23 +370,23 @@ impl<'a> Hub<'a> {
             table_id
         );
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.get_bq::<DescribeTableResponse>(&uri, token.to_string())
+        self.get_bq::<DescribeTableResponse>(&uri, maybe_token)
     }
 
     pub fn create_job(
         &self,
-        token: &str,
+        maybe_token: Option<String>,
         project_id: &str,
         req: &JobResource,
     ) -> client::Result<JobResource> {
         let path = format!("{}/{}/jobs", BIGQUERY_ROOT, project_id);
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.post_bq::<_, _>(&uri, req, token.to_string())
+        self.post_bq::<_, _>(&uri, req, maybe_token)
     }
 
     pub fn cancel_job(
         &self,
-        token: &str,
+        maybe_token: Option<String>,
         project_id: &str,
         job_id: &str,
     ) -> client::Result<JobResource> {
@@ -397,24 +399,24 @@ impl<'a> Hub<'a> {
             pub job: JobResource,
         }
 
-        self.post_bq::<_, Response>(&uri, common::Empty {}, token.to_string())
+        self.post_bq::<_, Response>(&uri, common::Empty {}, maybe_token)
             .map(|r| r.job)
     }
 
     pub fn get_job(
         &self,
-        token: &str,
+        maybe_token: Option<String>,
         project_id: &str,
         job_id: &str,
     ) -> client::Result<JobResource> {
         let path = format!("{}/{}/jobs/{}", BIGQUERY_ROOT, project_id, job_id);
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.get_bq::<_>(&uri, token.to_string())
+        self.get_bq::<_>(&uri, maybe_token)
     }
 
     pub fn get_query_results(
         &self,
-        token: &str,
+        maybe_token: Option<String>,
         project_id: &str,
         job_id: &str,
         req: &GetQueryResultsRequest,
@@ -427,16 +429,33 @@ impl<'a> Hub<'a> {
             req.to_query()
         );
         let uri = Uri::from_str(&path).expect("uri to be valid");
-        self.get_bq::<_>(&uri, token.to_string())
+        self.get_bq::<_>(&uri, maybe_token)
+    }
+
+    /// if a token was supplied, unwrap it; otherwise request a token using the hub's credentials
+    /// and return that
+    fn unwrap_user_oauth_token_or_fetch_new(
+        &self,
+        maybe_token: Option<String>,
+    ) -> client::Result<String> {
+        Ok(match maybe_token {
+            Some(token) => token,
+            None => {
+                self.token(&[BIGQUERY_OAUTH_READONLY_SCOPE.to_string()])?
+                    .access_token
+            }
+        })
     }
 
     // helper method for making a GET request
-    fn get_bq<D>(&self, uri: &hyper::Uri, token: String) -> client::Result<D>
+    fn get_bq<D>(&self, uri: &hyper::Uri, maybe_token: Option<String>) -> client::Result<D>
     where
         for<'de> D: 'static + Send + Deserialize<'de>,
     {
         let mut req = hyper::Request::new(hyper::Method::Get, uri.clone());
-        let auth = hyper::header::Authorization(hyper::header::Bearer { token });
+        let auth = hyper::header::Authorization(hyper::header::Bearer {
+            token: self.unwrap_user_oauth_token_or_fetch_new(maybe_token)?,
+        });
         req.headers_mut().set(auth);
 
         self.request(req).map(|(_, res)| res)
@@ -447,7 +466,7 @@ impl<'a> Hub<'a> {
         &self,
         uri: &hyper::Uri,
         body: B,
-        token: String,
+        maybe_token: Option<String>,
     ) -> client::Result<D>
     where
         for<'de> D: 'static + Send + Deserialize<'de>,
@@ -455,7 +474,9 @@ impl<'a> Hub<'a> {
         let mut req = hyper::Request::new(hyper::Method::Post, uri.clone());
         req.headers_mut().set(hyper::header::ContentType::json());
 
-        let auth = hyper::header::Authorization(hyper::header::Bearer { token });
+        let auth = hyper::header::Authorization(hyper::header::Bearer {
+            token: self.unwrap_user_oauth_token_or_fetch_new(maybe_token)?,
+        });
         req.headers_mut().set(auth);
 
         let body = serde_json::to_string(&body).unwrap();
