@@ -1,7 +1,6 @@
 use std::{io, fmt, thread, time};
 use std::io::Read;
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 use flate2::read::GzDecoder;
@@ -18,7 +17,10 @@ use auth;
 
 // (max) NOTE please don't use this directly - prefer 'access_hyper_client'
 type HyperClient = hyper::Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>;
-lazy_static!(static ref HYPER_CLIENT: AtomicPtr<HyperClient> = Default::default(););
+lazy_static!{
+    static ref HYPER_CLIENT: AtomicPtr<HyperClient> = Default::default();
+    static ref CORE_THREAD__REMOTE: (thread::JoinHandle<()>, reactor::Remote) = init_core_thread();
+}
 
 // (max) NOTE since Handle is only available on the reactor thread, we can
 // enforce that HyperClient is only used there by requiring Handle as an arg
@@ -73,40 +75,14 @@ pub struct GoogleCloudClient {
     project_id: String,
     remote: reactor::Remote,
     auth: auth::GoogleCloudAuth,
-    _core_thread: Arc<thread::JoinHandle<()>>,
 }
 
 impl GoogleCloudClient {
     pub fn new(project_id: &str) -> io::Result<Self> {
-        let (tx, rx) = oneshot::channel();
-        let core_thread = thread::Builder::new()
-            .name("google-cloud-client".into())
-            .spawn(move || {
-                let mut core = reactor::Core::new().unwrap();
-
-                let https = hyper_tls::HttpsConnector::new(DNS_WORKER_THREADS, &core.handle())
-                    .unwrap();
-
-                let mut client = hyper::Client::configure()
-                    .connector(https)
-                    .keep_alive_timeout(Some(time::Duration::from_secs(KEEP_ALIVE_TIMEOUT)))
-                    .keep_alive(true)
-                    .build(&core.handle());
-
-                HYPER_CLIENT.store(&mut client, Ordering::SeqCst);
-
-                let remote = core.remote();
-                tx.send(remote).unwrap();
-
-                core.run(future::empty::<(), ()>()).unwrap()
-            })?;
-
-        let remote = rx.wait().unwrap();
         Ok(GoogleCloudClient {
             project_id: project_id.to_string(),
-            remote: remote,
+            remote: CORE_THREAD__REMOTE.1.clone(),
             auth: auth::default_credentials(),
-            _core_thread: Arc::new(core_thread),
         })
     }
     pub fn hub<S>(&self) -> Hub<S> {
@@ -271,4 +247,32 @@ pub trait ApiClient {
 
         self.request(req).map(|(_, res)| res)
     }
+}
+
+/// this will be called when initializing CORE_THREAD__REMOTE
+fn init_core_thread() -> (thread::JoinHandle<()>, reactor::Remote) {
+    let (tx, rx) = oneshot::channel();
+    let core_thread = thread::Builder::new()
+        .name("google-cloud-client".into())
+        .spawn(move || {
+            let mut core = reactor::Core::new().unwrap();
+
+            let https = hyper_tls::HttpsConnector::new(DNS_WORKER_THREADS, &core.handle()).unwrap();
+
+            let mut client = hyper::Client::configure()
+                .connector(https)
+                .keep_alive_timeout(Some(time::Duration::from_secs(KEEP_ALIVE_TIMEOUT)))
+                .keep_alive(true)
+                .build(&core.handle());
+
+            HYPER_CLIENT.store(&mut client, Ordering::SeqCst);
+
+            let remote = core.remote();
+            tx.send(remote).unwrap();
+
+            core.run(future::empty::<(), ()>()).unwrap()
+        })
+        .expect("spawning core thread should succeed");
+
+    (core_thread, rx.wait().unwrap())
 }
