@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 
 use client::{self, ApiClient};
 
-use chrono::{self, DateTime, UTC};
+use chrono::{self, DateTime, Utc};
 use hyper::{self, Uri};
 use hyper::header::ContentType;
 use jwt;
@@ -36,7 +36,7 @@ pub struct Token {
 
     // set manually after deserialization
     #[serde(skip_deserializing)]
-    expires_at: Option<DateTime<UTC>>,
+    expires_at: Option<DateTime<Utc>>,
 }
 
 impl Token {
@@ -45,7 +45,7 @@ impl Token {
         hyper::header::Authorization(bearer)
     }
     pub fn is_expired(&self) -> bool {
-        self.expires_at.map_or(true, |at| UTC::now() > at)
+        self.expires_at.map_or(true, |at| Utc::now() > at)
     }
 }
 
@@ -128,7 +128,7 @@ impl GoogleCloudAuth {
                     id_token,
                     &*cert,
                     &jwt::Validation {
-                        algorithms: Some(vec![jwt::Algorithm::RS256]),
+                        algorithms: vec![jwt::Algorithm::RS256],
                         leeway: 1000 * 60, // 60 seconds
                         ..Default::default()
                     },
@@ -166,7 +166,7 @@ impl GoogleCloudAuth {
         // refresh the token and shrink the expiration window by 60s
         let mut up_to_date = self.adapter.refresh_token(client, scopes)?;
         let expires_in = chrono::Duration::seconds(up_to_date.expires_in - 60);
-        up_to_date.expires_at = Some(UTC::now() + expires_in);
+        up_to_date.expires_at = Some(Utc::now() + expires_in);
 
         *cached_token = up_to_date.clone();
         *cached_scopes = Vec::from(scopes);
@@ -337,7 +337,7 @@ impl ServiceAccountAuth {
             sub: Option<&'a str>, // User email address if this is a delegated token
         }
 
-        let iat = UTC::now().timestamp();
+        let iat = Utc::now().timestamp();
         let exp = iat + OAUTH_JWT_EXP_DELTA;
         let claims = Claims {
             iss: self.meta.client_email.as_str(),
