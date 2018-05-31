@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use chrono::{self, DateTime, UTC};
+use chrono::{self, DateTime, Utc};
 use hyper::{self, Uri};
 use openssl::x509::X509;
 
@@ -38,12 +38,12 @@ pub enum KeyRingType {
 #[derive(Clone, Debug)]
 pub struct KeyRing {
     keys: HashMap<String, Arc<Box<[u8]>>>,
-    expires_at: Option<DateTime<UTC>>,
+    expires_at: Option<DateTime<Utc>>,
 }
 
 impl KeyRing {
     pub fn is_expired(&self) -> bool {
-        self.expires_at.map_or(true, |at| UTC::now() > at)
+        self.expires_at.map_or(true, |at| Utc::now() > at)
     }
     pub fn get(&self, kid: &str) -> client::Result<PubKey> {
         self.keys.get(kid).map(|pk| PubKey(pk.clone())).ok_or_else(
@@ -99,13 +99,13 @@ pub fn fetch<C: ApiClient>(client: &C, ty: KeyRingType) -> client::Result<KeyRin
 
 header! { (Age, "Age") => [u32] }
 
-fn mk_expires_at(headers: hyper::Headers) -> Option<DateTime<UTC>> {
+fn mk_expires_at(headers: hyper::Headers) -> Option<DateTime<Utc>> {
     let age = headers.get::<Age>().map(|age| age.0).unwrap_or(0);
     if let Some(&hyper::header::CacheControl(ref directives)) = headers.get() {
         for directive in directives {
             if let hyper::header::CacheDirective::MaxAge(max_age) = *directive {
                 let expires_in = chrono::Duration::seconds((max_age - age) as i64);
-                return Some(UTC::now() + expires_in);
+                return Some(Utc::now() + expires_in);
             }
         }
     }
